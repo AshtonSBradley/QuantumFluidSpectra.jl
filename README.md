@@ -20,13 +20,12 @@ We rely on Fourier spectral methods throughout. The user provides a wavefunction
     L = (1,1)
     N = (n,n)
     X,K,dX,dK = makearrays(L,N) # setup domain
-    k² = k2(K)
 ```
 ```julia
 # make a test field
     ktest = K[1][2] # pick one of the `k` values
     ψ = @. exp(im*ktest*X[1]*one.(X[2]'))
-    psi = XField(ψ,X,K,k²) # make field object with required arrays.
+    psi = XField(ψ,X,K) # make field object with required arrays.
 ```
 </details>
 <details><summary><b>Basic Usage</b></summary>
