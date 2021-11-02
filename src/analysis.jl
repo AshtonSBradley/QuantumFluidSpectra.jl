@@ -748,7 +748,7 @@ function trap_spectrum(k,V,ψ,X,K)
     return bessel_reduce(k,x,y,C)
 end
 
-function density_spectrum(k,ψ,g,X,K)
+function density_spectrum(k,ψ,X,K)
     x,y = X 
     n = abs2.(ψ)
     C = autocorrelate(n,X,K) 
