@@ -52,12 +52,12 @@ function k2(K)
 end
 
 """
-    X,K,dX,dK = makearrays(L,N)
+    X,K,dX,dK = xk_arrays(L,N)
 
 Create all `x` and `k` arrays for box specified by tuples `L=(Lx,...)` and `N=(Nx,...)`.
 For convenience, differentials `dX`, `dK` are also reaturned. `L` and `N` must be tuples of equal length.
 """
-function makearrays(L,N)
+function xk_arrays(L,N)
     @assert length(L) == length(N)
     X = xvecs(L,N)
     K = kvecs(L,N)
@@ -87,12 +87,12 @@ function dfft(x,k)
 end
 
 """
-    DX,DK = dfftall(X,K)
+    DX,DK = fft_differentials(X,K)
 
 Evalutes tuple of measures that make `fft`, `ifft` 2-norm preserving for each
 `x` or `k` dimension.
 """
-function dfftall(X,K)
+function fft_differentials(X,K)
     M = length(X)
     DX = zeros(M); DK = zeros(M)
     for i ∈ eachindex(X)

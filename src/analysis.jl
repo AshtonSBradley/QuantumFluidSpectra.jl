@@ -29,19 +29,19 @@ function gradient(psi::Psi{3})
 end
 
 """
-	current(psi::Psi{D})
+	superfluid_current(psi::Psi{D})
 
-Compute the `D` current components of an `Psi` of spatial dimension `D`.
+Compute the `D` superfluid_current components of an `Psi` of spatial dimension `D`.
 The `D` cartesian components returned are `D`-dimensional arrays.
 """
-function current(psi::Psi{1})
+function superfluid_current(psi::Psi{1})
 	@unpack ψ = psi 
 	ψx = gradient(psi)
 	jx = @. imag(conj(ψ)*ψx)
     return jx
 end
 
-function current(psi::Psi{2})
+function superfluid_current(psi::Psi{2})
 	@unpack ψ = psi 
     ψx,ψy = gradient(psi)
 	jx = @. imag(conj(ψ)*ψx)
@@ -49,7 +49,7 @@ function current(psi::Psi{2})
 	return jx,jy
 end
 
-function current(psi::Psi{3})
+function superfluid_current(psi::Psi{3})
     @unpack ψ = psi 
     ψx,ψy,ψz = gradient(psi)
 	jx = @. imag(conj(ψ)*ψx)
@@ -59,12 +59,12 @@ function current(psi::Psi{3})
 end
 
 """
-	velocity(psi::Psi{D})
+	superfluid_velocity(psi::Psi{D})
 
-Compute the `D` velocity components of an `Psi` of spatial dimension `D`.
+Compute the `D` superfluid_velocity components of an `Psi` of spatial dimension `D`.
 The `D` velocities returned are `D`-dimensional arrays.
 """
-function velocity(psi::Psi{1})
+function superfluid_velocity(psi::Psi{1})
 	@unpack ψ = psi
     ψx = gradient(psi)
 	vx = @. imag(conj(ψ)*ψx)/abs2(ψ)
@@ -72,7 +72,7 @@ function velocity(psi::Psi{1})
 	return vx
 end
 
-function velocity(psi::Psi{2})
+function superfluid_velocity(psi::Psi{2})
 	@unpack ψ = psi
     ψx,ψy = gradient(psi)
     rho = abs2.(ψ)
@@ -83,7 +83,7 @@ function velocity(psi::Psi{2})
 	return vx,vy
 end
 
-function velocity(psi::Psi{3})
+function superfluid_velocity(psi::Psi{3})
 	@unpack ψ = psi
 	rho = abs2.(ψ)
     ψx,ψy,ψz = gradient(psi)
@@ -146,7 +146,7 @@ and compressible `ec` energy densities in position space. `D` can be 2 or 3 dime
 function energydecomp(psi::Psi{2})
     @unpack ψ,K = psi; kx,ky = K
     a = abs.(ψ)
-    vx, vy = velocity(psi)
+    vx, vy = superfluid_velocity(psi)
     wx = @. a*vx; wy = @. a*vy
     Wi, Wc = helmholtz(wx,wy,kx,ky)
     wxi, wyi = Wi; wxc, wyc = Wc
@@ -159,7 +159,7 @@ end
 function energydecomp(psi::Psi{3})
 	@unpack ψ,K = psi; kx,ky,kz = K
     a = abs.(ψ)
-    vx,vy,vz = velocity(psi)
+    vx,vy,vz = superfluid_velocity(psi)
     wx = @. a*vx; wy = @. a*vy; wz = @. a*vz
     Wi, Wc = helmholtz(wx,wy,wz,kx,ky,kz)
     wxi, wyi, wzi = Wi; wxc, wyc, wzc = Wc
@@ -219,7 +219,7 @@ using FFTW.
 """
 function convolve(ψ1,ψ2,X,K)
     n = length(X)
-    DX,DK = dfftall(X,K)
+    DX,DK = fft_differentials(X,K)
 	ϕ1 = zeropad(conj.(ψ1))
     ϕ2 = zeropad(ψ2)
 
@@ -245,7 +245,7 @@ This method is useful for evaluating spectra from cartesian data.
 """
 function auto_correlate(ψ,X,K)
     n = length(X)
-    DX,DK = dfftall(X,K)
+    DX,DK = fft_differentials(X,K)
     ϕ = zeropad(ψ)
 	χ = fft(ϕ)*prod(DX)
 	return ifft(abs2.(χ))*prod(DK)*(2*pi)^(n/2) |> fftshift
@@ -270,7 +270,7 @@ This method is useful for evaluating spectra from cartesian data.
 """
 function cross_correlate(ψ1,ψ2,X,K)
     n = length(X)
-    DX,DK = dfftall(X,K)
+    DX,DK = fft_differentials(X,K)
     ϕ1 = zeropad(ψ1)
     ϕ2 = zeropad(ψ2)
 	χ1 = fft(ϕ1)*prod(DX)
@@ -335,12 +335,12 @@ end
 """
 	incompressible_spectrum(k,ψ,X,K)
 
-Caculate the incompressible velocity correlation spectrum for wavefunction ``\\psi``, via Helmholtz decomposition.
+Caculate the incompressible superfluid_velocity correlation spectrum for wavefunction ``\\psi``, via Helmholtz decomposition.
 Input arrays `X`, `K` must be computed using `makearrays`.
 """
 function incompressible_spectrum(k,psi::Psi{2})
     @unpack ψ,X,K = psi; kx,ky = K
-    vx,vy = velocity(psi)
+    vx,vy = superfluid_velocity(psi)
     a = abs.(ψ)
     wx = @. a*vx; wy = @. a*vy
     Wi, Wc = helmholtz(wx,wy,kx,ky)
@@ -354,7 +354,7 @@ end
 
 function incompressible_spectrum(k,psi::Psi{3})
     @unpack ψ,X,K = psi; kx,ky,kz = K
-    vx,vy,vz = velocity(psi)
+    vx,vy,vz = superfluid_velocity(psi)
     a = abs.(ψ)
     wx = @. a*vx; wy = @. a*vy; wz = @. a*vz
     Wi, Wc = helmholtz(wx,wy,wz,kx,ky,kz)
@@ -375,7 +375,7 @@ Input arrays `X`, `K` must be computed using `makearrays`.
 """
 function compressible_spectrum(k,psi::Psi{2})
     @unpack ψ,X,K = psi; kx,ky = K
-    vx,vy = velocity(psi)
+    vx,vy = superfluid_velocity(psi)
     a = abs(ψ)
     wx = @. abs(ψ)*vx; wy = @. abs(ψ)*vy
     Wi, Wc = helmholtz(wx,wy,kx,ky)
@@ -389,7 +389,7 @@ end
 
 function compressible_spectrum(k,psi::Psi{3})
     @unpack ψ,X,K = psi; kx,ky,kz = K
-    vx,vy,vz = velocity(psi)
+    vx,vy,vz = superfluid_velocity(psi)
     a = abs(ψ)
     wx = @. a*vx; wy = @. a*vy; wz = @. a*vz
     Wi, Wc = helmholtz(wx,wy,wz,kx,ky,kz)
@@ -434,12 +434,12 @@ end
 """
     incompressible_density(k,ψ,X,K)
 
-Calculates the kinetic energy density of the incompressible velocity field in the wavefunction ``\\psi``, at the
+Calculates the kinetic energy density of the incompressible superfluid_velocity field in the wavefunction ``\\psi``, at the
 points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 """
 function incompressible_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi; kx,ky = K
-    vx,vy = velocity(psi)
+    vx,vy = superfluid_velocity(psi)
     a = abs(ψ)
     ux = @. a*vx; uy = @. a*vy 
     Wi, Wc = helmholtz(ux,uy,kx,ky)
@@ -456,7 +456,7 @@ end
 
 function incompressible_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi; kx,ky,kz = K
-    vx,vy,vz = velocity(psi)
+    vx,vy,vz = superfluid_velocity(psi)
     a = abs(ψ)
     ux = @. a*vx; uy = @. a*vy; uz = @. a*vz
     Wi, Wc = helmholtz(ux,uy,uz,kx,ky,kz)
@@ -476,12 +476,12 @@ end
 """
     compressible_density(k,ψ,X,K)
 
-Calculates the kinetic energy density of the compressible velocity field in the wavefunction ``\\psi``, at the
+Calculates the kinetic energy density of the compressible superfluid_velocity field in the wavefunction ``\\psi``, at the
 points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 """
 function compressible_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi; kx,ky = K
-    vx,vy = velocity(psi)
+    vx,vy = superfluid_velocity(psi)
     a = abs(ψ)
     ux = @. a*vx; uy = @. a*vy 
     Wi, Wc = helmholtz(ux,uy,kx,ky)
@@ -498,7 +498,7 @@ end
 
 function compressible_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi; kx,ky,kz = K
-    vx,vy,vz = velocity(psi)
+    vx,vy,vz = superfluid_velocity(psi)
     a = abs(ψ)
     ux = @. a*vx; uy = @. a*vy; uz = @. a*vz
     Wi, Wc = helmholtz(ux,uy,uz,kx,ky,kz)
@@ -561,7 +561,7 @@ points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 """
 function ic_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi; kx,ky=K
-    vx,vy = velocity(psi)
+    vx,vy = superfluid_velocity(psi)
     a = abs(ψ)
     ux = @. a*vx; uy = @. a*vy 
     Wi, Wc = helmholtz(ux,uy,kx,ky)
@@ -582,7 +582,7 @@ end
 
 function ic_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi; kx,ky,kz=K
-    vx,vy,vz = velocity(psi)
+    vx,vy,vz = superfluid_velocity(psi)
     a = abs(ψ)
     ux = @. a*vx; uy = @. a*vy; uz = @. a*vz 
     Wi, Wc = helmholtz(ux,uy,uz,kx,ky,kz)
@@ -609,11 +609,11 @@ end
     iq_density(k,ψ,X,K)
 
 Energy density of the incompressible-quantum pressure interaction in the wavefunction ``\\psi``, at the
-points `k`. Arrays `X`, `K` should be computed using `makearrays`.
+points `k`. Arrays `X`, `K` should be computed using `xk_arrays`.
 """
 function iq_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi; kx,ky=K
-    vx,vy = velocity(psi)
+    vx,vy = superfluid_velocity(psi)
     a = abs(ψ)
     ux = @. a*vx; uy = @. a*vy 
     Wi, Wc = helmholtz(ux,uy,kx,ky)
@@ -638,7 +638,7 @@ end
 
 function iq_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi; kx,ky,kz=K
-    vx,vy,vz = velocity(psi)
+    vx,vy,vz = superfluid_velocity(psi)
     a = abs(ψ)
     ux = @. a*vx; uy = @. a*vy; uz = @. a*vz
     Wi, Wc = helmholtz(ux,uy,uz,kx,ky,kz)
@@ -674,7 +674,7 @@ points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 """
 function cq_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi; kx,ky = K
-    vx,vy = velocity(psi)
+    vx,vy = superfluid_velocity(psi)
     a = abs(ψ)
     ux = @. a*vx; uy = @. a*vy 
     Wi, Wc = helmholtz(ux,uy,kx,ky)
@@ -699,7 +699,7 @@ end
 
 function cq_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi; kx,ky,kz=K
-    vx,vy,vz = velocity(psi)
+    vx,vy,vz = superfluid_velocity(psi)
     a = abs(ψ)
     ux = @. a*vx; uy = @. a*vy; uz = @. a*vz
     Wi, Wc = helmholtz(ux,uy,uz,kx,ky,kz)
@@ -729,7 +729,7 @@ end
 """
     gv(r,k,ε)
 
-Transform the power spectrum `ε(k)` defined at `k` to position space to give a system averaged velocity two-point correlation function on the spatial points `r`. The vector `r` can be chosen arbitrarily, provided `r ≥ 0`. 
+Transform the power spectrum `ε(k)` defined at `k` to position space to give a system averaged superfluid_velocity two-point correlation function on the spatial points `r`. The vector `r` can be chosen arbitrarily, provided `r ≥ 0`. 
 """
 function gv(r,k,ε)
     dk = diff(k)

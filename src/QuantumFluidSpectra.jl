@@ -22,8 +22,9 @@ export auto_correlate, cross_correlate
 export bessel_reduce, sinc_reduce, gv
 export log10range, convolve
 
-export makearrays, dfftall
-export velocity, current, energydecomp, helmholtz, kinetic_density
+export xk_arrays, fft_differentials
+export superfluid_velocity, superfluid_current
+export energydecomp, helmholtz, kinetic_density
 export incompressible_spectrum, compressible_spectrum, qpressure_spectrum
 export incompressible_density, compressible_density, qpressure_density
 export ic_density, iq_density, cq_density

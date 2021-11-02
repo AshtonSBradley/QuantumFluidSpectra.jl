@@ -6,7 +6,7 @@ using Test
     n = 100
     L = (1,1)
     N = (n,n)
-    X,K,dX,dK = makearrays(L,N)
+    X,K,dX,dK = xk_arrays(L,N)
     kx,ky = K
 
     ##
@@ -15,7 +15,7 @@ using Test
     psi = Psi(ψ,X,K)
 
     ## flow only in x direction, of correct value
-    vx,vy = velocity(psi)
+    vx,vy = superfluid_velocity(psi)
     @test vx ≈ ktest*one.(vx)
     @test vy ≈ zero.(vy)
 
