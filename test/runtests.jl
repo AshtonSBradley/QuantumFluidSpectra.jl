@@ -15,7 +15,7 @@ using Test
     psi = Psi(ψ,X,K)
 
     ## flow only in x direction, of correct value
-    vx,vy = superfluid_velocity(psi)
+    vx,vy = velocity(psi)
     @test vx ≈ ktest*one.(vx)
     @test vy ≈ zero.(vy)
 

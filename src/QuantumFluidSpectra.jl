@@ -23,7 +23,7 @@ export bessel_reduce, sinc_reduce, gv
 export log10range, convolve
 
 export xk_arrays, fft_differentials
-export superfluid_velocity, superfluid_current
+export gradient, velocity, current
 export energydecomp, helmholtz, kinetic_density
 export incompressible_spectrum, compressible_spectrum, qpressure_spectrum
 export incompressible_density, compressible_density, qpressure_density
