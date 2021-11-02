@@ -376,7 +376,7 @@ Input arrays `X`, `K` must be computed using `makearrays`.
 function compressible_spectrum(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
     vx,vy = velocity(psi)
-    a = abs(ψ)
+    a = abs.(ψ)
     wx = @. abs(ψ)*vx; wy = @. abs(ψ)*vy
     Wi, Wc = helmholtz(wx,wy,K...)
     wx,wy = Wc
@@ -390,7 +390,7 @@ end
 function compressible_spectrum(k,psi::Psi{3})
     @unpack ψ,X,K = psi
     vx,vy,vz = velocity(psi)
-    a = abs(ψ)
+    a = abs.(ψ)
     wx = @. a*vx; wy = @. a*vy; wz = @. a*vz
     Wi, Wc = helmholtz(wx,wy,wz,K...)
     wx,wy,wz = Wc
@@ -440,7 +440,7 @@ points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 function incompressible_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
     vx,vy = velocity(psi)
-    a = abs(ψ)
+    a = abs.(ψ)
     ux = @. a*vx; uy = @. a*vy 
     Wi, Wc = helmholtz(ux,uy,K...)
     wix,wiy = Wi
@@ -457,7 +457,7 @@ end
 function incompressible_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi 
     vx,vy,vz = velocity(psi)
-    a = abs(ψ)
+    a = abs.(ψ)
     ux = @. a*vx; uy = @. a*vy; uz = @. a*vz
     Wi, Wc = helmholtz(ux,uy,uz,K...)
     wix,wiy,wiz = Wi
@@ -482,7 +482,7 @@ points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 function compressible_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
     vx,vy = velocity(psi)
-    a = abs(ψ)
+    a = abs.(ψ)
     ux = @. a*vx; uy = @. a*vy 
     Wi, Wc = helmholtz(ux,uy,K...)
     wcx,wcy = Wc
@@ -499,7 +499,7 @@ end
 function compressible_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi 
     vx,vy,vz = velocity(psi)
-    a = abs(ψ)
+    a = abs.(ψ)
     ux = @. a*vx; uy = @. a*vy; uz = @. a*vz
     Wi, Wc = helmholtz(ux,uy,uz,K...)
     wcx,wcy,wcz = Wc
@@ -562,7 +562,7 @@ points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 function ic_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
     vx,vy = velocity(psi)
-    a = abs(ψ)
+    a = abs.(ψ)
     ux = @. a*vx; uy = @. a*vy 
     Wi, Wc = helmholtz(ux,uy,K...)
     wix,wiy = Wi; wcx,wcy = Wc
@@ -583,7 +583,7 @@ end
 function ic_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi 
     vx,vy,vz = velocity(psi)
-    a = abs(ψ)
+    a = abs.(ψ)
     ux = @. a*vx; uy = @. a*vy; uz = @. a*vz 
     Wi, Wc = helmholtz(ux,uy,uz,K...)
     wix,wiy,wiz = Wi; wcx,wcy,wcz = Wc
@@ -614,7 +614,7 @@ points `k`. Arrays `X`, `K` should be computed using `xk_arrays`.
 function iq_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
     vx,vy = velocity(psi)
-    a = abs(ψ)
+    a = abs.(ψ)
     ux = @. a*vx; uy = @. a*vy 
     Wi, Wc = helmholtz(ux,uy,K...)
     wix,wiy = Wi 
@@ -639,7 +639,7 @@ end
 function iq_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi 
     vx,vy,vz = velocity(psi)
-    a = abs(ψ)
+    a = abs.(ψ)
     ux = @. a*vx; uy = @. a*vy; uz = @. a*vz
     Wi, Wc = helmholtz(ux,uy,uz,K...)
     wix,wiy,wiz = Wi
@@ -675,7 +675,7 @@ points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 function cq_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
     vx,vy = velocity(psi)
-    a = abs(ψ)
+    a = abs.(ψ)
     ux = @. a*vx; uy = @. a*vy 
     Wi, Wc = helmholtz(ux,uy,K...)
     wcx,wcy = Wc 
@@ -700,7 +700,7 @@ end
 function cq_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi 
     vx,vy,vz = velocity(psi)
-    a = abs(ψ)
+    a = abs.(ψ)
     ux = @. a*vx; uy = @. a*vy; uz = @. a*vz
     Wi, Wc = helmholtz(ux,uy,uz,K...)
     wcx,wcy,wcz = Wc  
