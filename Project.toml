@@ -1,0 +1,13 @@
+name = "QuantumFluidSpectra"
+uuid = "8ddfec37-9569-48bd-b1f3-d8731767ee3a"
+authors = ["Ashton Bradley <ashton.bradley@gmail.com> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
