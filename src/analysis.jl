@@ -231,7 +231,7 @@ end
 @doc raw"""
 	auto_correlate(ψ,X,K)
 
-Return the autocorrelation integral of a complex field ``\psi``, ``A``, given by
+Return the auto-correlation integral of a complex field ``\psi``, ``A``, given by
 
 ```
 A(\rho)=\int d^2r\;\psi^*(r-\rho)\psi(r)
@@ -277,7 +277,7 @@ function cross_correlate(ψ1,ψ2,X,K)
     χ2 = fft(ϕ2)*prod(DX)
 	return ifft(conj(χ1).*χ2)*prod(DK)*(2*pi)^(n/2) |> fftshift
 end
-cross_correlate(psi::Psi{D}) where D = cross_correlate(psi.ψ,psi.X,psi.K)
+cross_correlate(psi1::Psi{D},psi2::Psi{D}) where D = cross_correlate(psi1.ψ,psi2.ψ,psi1.X,psi1.K)
 
 function bessel_reduce(k,x,y,C)
     dx,dy = x[2]-x[1],y[2]-y[1]
@@ -743,7 +743,7 @@ end
 function trap_spectrum(k,V,psi::Psi{2})
     @unpack ψ,X,K = psi; x,y = X
     f = @. abs(ψ)*sqrt(V(x,y',0.))
-    C = autocorrelate(f,X,K)
+    C = auto_correlate(f,X,K)
 
     return bessel_reduce(k,X...,C)
 end
@@ -751,7 +751,7 @@ end
 function trap_spectrum(k,V,psi::Psi{3})
     @unpack ψ,X,K = psi; x,y,z = X
     f = @. abs(ψ)*sqrt(V(x,y',reshape(z,1,1,length(z)),0.))
-    C = autocorrelate(f,X,K)
+    C = auto_correlate(f,X,K)
 
     return bessel_reduce(k,X...,C)
 end
@@ -759,7 +759,7 @@ end
 function density_spectrum(k,psi::Psi{D}) where D
     @unpack ψ,X,K = psi 
     n = abs2.(ψ)
-    C = autocorrelate(n,X,K) 
+    C = auto_correlate(n,X,K) 
 
     return bessel_reduce(k,X...,C)
 end
