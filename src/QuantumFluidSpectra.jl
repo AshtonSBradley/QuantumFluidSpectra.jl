@@ -8,7 +8,7 @@ using UnPack
 using TensorCast
 
 abstract type Field end
-struct XField{D} <: Field
+struct Psi{D} <: Field
     ψ::Array{Complex{Float64},D}
     X::NTuple{D}
     K::NTuple{D}
@@ -17,12 +17,12 @@ end
 include("arrays.jl")
 include("analysis.jl")
 
-export XField
+export Psi
 export auto_correlate, cross_correlate
 export bessel_reduce, sinc_reduce, gv
 export log10range, convolve
 
-export k2, makearrays, dfftall
+export makearrays, dfftall
 export velocity, current, energydecomp, helmholtz, kinetic_density
 export incompressible_spectrum, compressible_spectrum, qpressure_spectrum
 export incompressible_density, compressible_density, qpressure_density

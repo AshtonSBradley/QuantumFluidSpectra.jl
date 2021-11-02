@@ -1,17 +1,17 @@
 """
-	gradient(psi::XField{D})
+	gradient(psi::Psi{D})
 
-Compute the `D` vector gradient components of an `XField` of spatial dimension `D`.
+Compute the `D` vector gradient components of a wavefunction `Psi` of spatial dimension `D`.
 The `D` gradient components returned are `D`-dimensional arrays.
 """
-function gradient(psi::XField{1})
+function gradient(psi::Psi{1})
 	@unpack ψ,K = psi; kx = K[1] 
 	ϕ = fft(ψ)
 	ψx = ifft(im*kx.*ϕ)
     return ψx
 end
 
-function gradient(psi::XField{2})
+function gradient(psi::Psi{2})
 	@unpack ψ,K = psi; kx,ky = K 
 	ϕ = fft(ψ)
 	ψx = ifft(im*kx.*ϕ)
@@ -19,7 +19,7 @@ function gradient(psi::XField{2})
 	return ψx,ψy
 end
 
-function gradient(psi::XField{3})
+function gradient(psi::Psi{3})
 	@unpack ψ,K = psi; kx,ky,kz = K 
 	ϕ = fft(ψ)
 	ψx = ifft(im*kx.*ϕ)
@@ -29,19 +29,19 @@ function gradient(psi::XField{3})
 end
 
 """
-	current(psi::XField{D})
+	current(psi::Psi{D})
 
-Compute the `D` current components of an `XField` of spatial dimension `D`.
+Compute the `D` current components of an `Psi` of spatial dimension `D`.
 The `D` cartesian components returned are `D`-dimensional arrays.
 """
-function current(psi::XField{1})
+function current(psi::Psi{1})
 	@unpack ψ = psi 
 	ψx = gradient(psi)
 	jx = @. imag(conj(ψ)*ψx)
     return jx
 end
 
-function current(psi::XField{2})
+function current(psi::Psi{2})
 	@unpack ψ = psi 
     ψx,ψy = gradient(psi)
 	jx = @. imag(conj(ψ)*ψx)
@@ -49,7 +49,7 @@ function current(psi::XField{2})
 	return jx,jy
 end
 
-function current(psi::XField{3})
+function current(psi::Psi{3})
     @unpack ψ = psi 
     ψx,ψy,ψz = gradient(psi)
 	jx = @. imag(conj(ψ)*ψx)
@@ -59,12 +59,12 @@ function current(psi::XField{3})
 end
 
 """
-	velocity(psi::XField{D})
+	velocity(psi::Psi{D})
 
-Compute the `D` velocity components of an `XField` of spatial dimension `D`.
+Compute the `D` velocity components of an `Psi` of spatial dimension `D`.
 The `D` velocities returned are `D`-dimensional arrays.
 """
-function velocity(psi::XField{1})
+function velocity(psi::Psi{1})
 	@unpack ψ = psi
     ψx = gradient(psi)
 	vx = @. imag(conj(ψ)*ψx)/abs2(ψ)
@@ -72,7 +72,7 @@ function velocity(psi::XField{1})
 	return vx
 end
 
-function velocity(psi::XField{2})
+function velocity(psi::Psi{2})
 	@unpack ψ = psi
     ψx,ψy = gradient(psi)
     rho = abs2.(ψ)
@@ -83,7 +83,7 @@ function velocity(psi::XField{2})
 	return vx,vy
 end
 
-function velocity(psi::XField{3})
+function velocity(psi::Psi{3})
 	@unpack ψ = psi
 	rho = abs2.(ψ)
     ψx,ψy,ψz = gradient(psi)
@@ -133,7 +133,7 @@ function helmholtz(wx, wy, wz, kx, ky, kz)
     return Wi, Wc
 end
 
-# function helmholtz(W::NTuple{N,Array{Float64,N}}, psi::XField{N}) where N
+# function helmholtz(W::NTuple{N,Array{Float64,N}}, psi::Psi{N}) where N
 #     return helmholtz(W..., psi)
 # end
 
@@ -143,7 +143,7 @@ end
 Decomposes the hydrodynamic kinetic energy of `psi`, returning the total `et`, incompressible `ei`,
 and compressible `ec` energy densities in position space. `D` can be 2 or 3 dimensions.
 """
-function energydecomp(psi::XField{2})
+function energydecomp(psi::Psi{2})
     @unpack ψ,K = psi; kx,ky = K
     a = abs.(ψ)
     vx, vy = velocity(psi)
@@ -156,7 +156,7 @@ function energydecomp(psi::XField{2})
     return et, ei, ec
 end
 
-function energydecomp(psi::XField{3})
+function energydecomp(psi::Psi{3})
 	@unpack ψ,K = psi; kx,ky,kz = K
     a = abs.(ψ)
     vx,vy,vz = velocity(psi)
@@ -251,7 +251,7 @@ function auto_correlate(ψ,X,K)
 	return ifft(abs2.(χ))*prod(DK)*(2*pi)^(n/2) |> fftshift
 end
 
-auto_correlate(psi::XField{D}) where D = auto_correlate(psi.ψ,psi.X,psi.K)
+auto_correlate(psi::Psi{D}) where D = auto_correlate(psi.ψ,psi.X,psi.K)
 
 @doc raw"""
 	cross_correlate(ψ,X,K)
@@ -277,7 +277,7 @@ function cross_correlate(ψ1,ψ2,X,K)
     χ2 = fft(ϕ2)*prod(DX)
 	return ifft(conj(χ1).*χ2)*prod(DK)*(2*pi)^(n/2) |> fftshift
 end
-cross_correlate(psi::XField{D}) where D = cross_correlate(psi.ψ,psi.X,psi.K)
+cross_correlate(psi::Psi{D}) where D = cross_correlate(psi.ψ,psi.X,psi.K)
 
 function bessel_reduce(k,x,y,C)
     dx,dy = x[2]-x[1],y[2]-y[1]
@@ -313,7 +313,7 @@ end
 Calculates the kinetic enery spectrum for wavefunction ``\\psi``, at the
 points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 """
-function kinetic_density(k,psi::XField{2})
+function kinetic_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi
     ψx,ψy = gradient(psi)
 	cx = auto_correlate(ψx,X,K)
@@ -322,7 +322,7 @@ function kinetic_density(k,psi::XField{2})
     return bessel_reduce(k,x,y,C)
 end
 
-function kinetic_density(k,psi::XField{3})
+function kinetic_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi
     ψx,ψy,ψz = gradient(psi)
 	cx = auto_correlate(ψx,X,K)
@@ -338,7 +338,7 @@ end
 Caculate the incompressible velocity correlation spectrum for wavefunction ``\\psi``, via Helmholtz decomposition.
 Input arrays `X`, `K` must be computed using `makearrays`.
 """
-function incompressible_spectrum(k,psi::XField{2})
+function incompressible_spectrum(k,psi::Psi{2})
     @unpack ψ,X,K = psi; kx,ky = K
     vx,vy = velocity(psi)
     a = abs.(ψ)
@@ -352,7 +352,7 @@ function incompressible_spectrum(k,psi::XField{2})
     return bessel_reduce(k,x,y,C)
 end
 
-function incompressible_spectrum(k,psi::XField{3})
+function incompressible_spectrum(k,psi::Psi{3})
     @unpack ψ,X,K = psi; kx,ky,kz = K
     vx,vy,vz = velocity(psi)
     a = abs.(ψ)
@@ -373,7 +373,7 @@ end
 Caculate the compressible kinetic enery spectrum for wavefunction ``\\psi``, via Helmholtz decomposition.
 Input arrays `X`, `K` must be computed using `makearrays`.
 """
-function compressible_spectrum(k,psi::XField{2})
+function compressible_spectrum(k,psi::Psi{2})
     @unpack ψ,X,K = psi; kx,ky = K
     vx,vy = velocity(psi)
     a = abs(ψ)
@@ -387,7 +387,7 @@ function compressible_spectrum(k,psi::XField{2})
     return bessel_reduce(k,x,y,C)
 end
 
-function compressible_spectrum(k,psi::XField{3})
+function compressible_spectrum(k,psi::Psi{3})
     @unpack ψ,X,K = psi; kx,ky,kz = K
     vx,vy,vz = velocity(psi)
     a = abs(ψ)
@@ -403,14 +403,14 @@ function compressible_spectrum(k,psi::XField{3})
 end
 
 """
-	qpressure_spectrum(k,psi::XField{D})
+	qpressure_spectrum(k,psi::Psi{D})
 
 Caculate the quantum pressure correlation spectrum for wavefunction ``\\psi``.
 Input arrays `X`, `K` must be computed using `makearrays`.
 """
-function qpressure_spectrum(k,psi::XField{2})
+function qpressure_spectrum(k,psi::Psi{2})
     @unpack ψ,X,K = psi
-    psia = XField(abs.(ψ) |> complex,X,K)
+    psia = Psi(abs.(ψ) |> complex,X,K)
     wx,wy = gradient(psia)
 
 	cx = auto_correlate(wx,X,K)
@@ -419,9 +419,9 @@ function qpressure_spectrum(k,psi::XField{2})
     return bessel_reduce(k,x,y,C)
 end
 
-function qpressure_spectrum(k,psi::XField{3})
+function qpressure_spectrum(k,psi::Psi{3})
     @unpack ψ,X,K = psi
-    psia = XField(abs.(ψ) |> complex,X,K )
+    psia = Psi(abs.(ψ) |> complex,X,K )
     wx,wy,wz = gradient(psia)
 
 	cx = auto_correlate(wx,X,K)
@@ -437,7 +437,7 @@ end
 Calculates the kinetic energy density of the incompressible velocity field in the wavefunction ``\\psi``, at the
 points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 """
-function incompressible_density(k,psi::XField{2})
+function incompressible_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi; kx,ky = K
     vx,vy = velocity(psi)
     a = abs(ψ)
@@ -454,7 +454,7 @@ function incompressible_density(k,psi::XField{2})
     return bessel_reduce(k,x,y,C)
 end
 
-function incompressible_density(k,psi::XField{3})
+function incompressible_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi; kx,ky,kz = K
     vx,vy,vz = velocity(psi)
     a = abs(ψ)
@@ -479,7 +479,7 @@ end
 Calculates the kinetic energy density of the compressible velocity field in the wavefunction ``\\psi``, at the
 points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 """
-function compressible_density(k,psi::XField{2})
+function compressible_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi; kx,ky = K
     vx,vy = velocity(psi)
     a = abs(ψ)
@@ -496,7 +496,7 @@ function compressible_density(k,psi::XField{2})
     return bessel_reduce(k,x,y,C)
 end
 
-function compressible_density(k,psi::XField{3})
+function compressible_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi; kx,ky,kz = K
     vx,vy,vz = velocity(psi)
     a = abs(ψ)
@@ -521,9 +521,9 @@ end
 Energy density of the quantum pressure in the wavefunction ``\\psi``, at the
 points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 """
-function qpressure_density(k,psi::XField{2})
+function qpressure_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi
-    psia = XField(abs.(ψ) |> complex,X,K )
+    psia = Psi(abs.(ψ) |> complex,X,K )
     rnx,rny = gradient(psia)
     U = @. exp(im*angle(ψ))
     @. rnx *= U # restore phase factors
@@ -535,9 +535,9 @@ function qpressure_density(k,psi::XField{2})
     return bessel_reduce(k,x,y,C)
 end
 
-function qpressure_density(k,psi::XField{3})
+function qpressure_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi
-    psia = XField(abs.(ψ) |> complex,X,K )
+    psia = Psi(abs.(ψ) |> complex,X,K )
     rnx,rny,rnz = gradient(psia)
     U = @. exp(im*angle(ψ))
     @. rnx *= U # restore phase factors
@@ -559,7 +559,7 @@ end
 Energy density of the incompressible-compressible interaction in the wavefunction ``\\psi``, at the
 points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 """
-function ic_density(k,psi::XField{2})
+function ic_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi; kx,ky=K
     vx,vy = velocity(psi)
     a = abs(ψ)
@@ -580,7 +580,7 @@ function ic_density(k,psi::XField{2})
     return bessel_reduce(k,x,y,C)
 end
 
-function ic_density(k,psi::XField{3})
+function ic_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi; kx,ky,kz=K
     vx,vy,vz = velocity(psi)
     a = abs(ψ)
@@ -611,7 +611,7 @@ end
 Energy density of the incompressible-quantum pressure interaction in the wavefunction ``\\psi``, at the
 points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 """
-function iq_density(k,psi::XField{2})
+function iq_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi; kx,ky=K
     vx,vy = velocity(psi)
     a = abs(ψ)
@@ -619,7 +619,7 @@ function iq_density(k,psi::XField{2})
     Wi, Wc = helmholtz(ux,uy,kx,ky)
     wix,wiy = Wi 
 
-    psia = XField(abs.(ψ) |> complex,X,K )
+    psia = Psi(abs.(ψ) |> complex,X,K )
     wqx,wqy = gradient(psia)
 
     U = @. exp(im*angle(ψ))
@@ -636,7 +636,7 @@ function iq_density(k,psi::XField{2})
     return bessel_reduce(k,x,y,C)
 end
 
-function iq_density(k,psi::XField{3})
+function iq_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi; kx,ky,kz=K
     vx,vy,vz = velocity(psi)
     a = abs(ψ)
@@ -644,7 +644,7 @@ function iq_density(k,psi::XField{3})
     Wi, Wc = helmholtz(ux,uy,uz,kx,ky,kz)
     wix,wiy,wiz = Wi
 
-    psia = XField(abs.(ψ) |> complex,X,K )
+    psia = Psi(abs.(ψ) |> complex,X,K )
     wqx,wqy,wqz = gradient(psia)
 
     U = @. exp(im*angle(ψ))
@@ -672,7 +672,7 @@ end
 Energy density of the compressible-quantum pressure interaction in the wavefunction ``\\psi``, at the
 points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 """
-function cq_density(k,psi::XField{2})
+function cq_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi; kx,ky = K
     vx,vy = velocity(psi)
     a = abs(ψ)
@@ -680,7 +680,7 @@ function cq_density(k,psi::XField{2})
     Wi, Wc = helmholtz(ux,uy,kx,ky)
     wcx,wcy = Wc 
 
-    psia = XField(abs.(ψ) |> complex,X,K)
+    psia = Psi(abs.(ψ) |> complex,X,K)
     wqx,wqy = gradient(psia)
 
     U = @. exp(im*angle(ψ))
@@ -697,7 +697,7 @@ function cq_density(k,psi::XField{2})
     return bessel_reduce(k,x,y,C)
 end
 
-function cq_density(k,psi::XField{3})
+function cq_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi; kx,ky,kz=K
     vx,vy,vz = velocity(psi)
     a = abs(ψ)
@@ -705,7 +705,7 @@ function cq_density(k,psi::XField{3})
     Wi, Wc = helmholtz(ux,uy,uz,kx,ky,kz)
     wcx,wcy,wcz = Wc  
 
-    psia = XField(abs.(ψ) |> complex,X,K)
+    psia = Psi(abs.(ψ) |> complex,X,K)
     wqx,wqy,wqz = gradient(psia)
 
     U = @. exp(im*angle(ψ))

@@ -8,12 +8,11 @@ using Test
     N = (n,n)
     X,K,dX,dK = makearrays(L,N)
     kx,ky = K
-    k² = k2(K)
 
     ##
     ktest = K[1][2]
     ψ = @. exp(im*ktest*X[1]*one.(X[2]'))
-    psi = XField(ψ,X,K)
+    psi = Psi(ψ,X,K)
 
     ## flow only in x direction, of correct value
     vx,vy = velocity(psi)
