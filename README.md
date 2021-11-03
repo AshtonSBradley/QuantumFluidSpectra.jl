@@ -25,7 +25,7 @@ We rely on Fourier spectral methods throughout. The user provides a wavefunction
 # make a test field
     ktest = K[1][2] # pick one of the `k` values
     ψ = @. exp(im*ktest*X[1]*one.(X[2]'))
-    psi = XField(ψ,X,K) # make field object with required arrays.
+    psi = Psi(ψ,X,K) # make field object with required arrays.
 ```
 </details>
 <details><summary><b>Basic Usage</b></summary>
