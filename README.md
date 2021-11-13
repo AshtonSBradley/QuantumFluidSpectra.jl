@@ -1,7 +1,7 @@
 # QuantumFluidSpectra.jl
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://AshtonSBradley.github.io/QuantumFluidSpectra.jl/stable)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://AshtonSBradley.github.io/QuantumFluidSpectra.jl/dev)
+<!-- [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://AshtonSBradley.github.io/QuantumFluidSpectra.jl/stable)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://AshtonSBradley.github.io/QuantumFluidSpectra.jl/dev) -->
 [![Build Status](https://github.com/AshtonSBradley/QuantumFluidSpectra.jl/workflows/CI/badge.svg)](https://github.com/AshtonSBradley/QuantumFluidSpectra.jl/actions)
 [![Coverage](https://codecov.io/gh/AshtonSBradley/QuantumFluidSpectra.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/AshtonSBradley/QuantumFluidSpectra.jl)
 
