@@ -5,7 +5,7 @@
 [![Build Status](https://github.com/AshtonSBradley/QuantumFluidSpectra.jl/workflows/CI/badge.svg)](https://github.com/AshtonSBradley/QuantumFluidSpectra.jl/actions)
 <!-- [![Coverage](https://codecov.io/gh/AshtonSBradley/QuantumFluidSpectra.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/AshtonSBradley/QuantumFluidSpectra.jl) -->
 
-This package provides methods to calculate energy spectra of quantum fluids described by a wavefunction, including dilute-gas Bose-Einstein condensates, polariton BEC, and quantum fluids of light. 
+This package provides methods to calculate energy spectra of compressible quantum fluids described by a wavefunction, including dilute-gas Bose-Einstein condensates, polariton BEC, and quantum fluids of light. 
 
 Fast, accurate spectral analysis provides a wealth of information about nonlinear quantum fluid dynamics. 
 
