@@ -1,9 +1,8 @@
 # Script to create the test wavefunction
 # Dynamics not required: imprint an exact GPE vortex core onto a Thomas-Fermi state
 
-using VortexDistributions, Plots, Plots.Measures, JLD2, LaTeXStrings
-using SpecialFunctions
-using QuantumFluidSpectra
+using SpecialFunctions, Plots, Plots.Measures, JLD2, LaTeXStrings
+using QuantumFluidSpectra, VortexDistributions
 
 function new_plot(;size=(400,200))
     fs,tfs,lw = 12,8,1.5
@@ -65,7 +64,7 @@ k = LinRange(kmin,kmax,Np)
 @load joinpath(@__DIR__,"test_psi.jld2") ψv x y εki
 
 ## Fig 3 (a) ui power spectrum plot
-pgfplotsx()
+# pgfplotsx()
 ep3a = new_plot()
 plot!(k*ξ,εki*ξ/μ,scale=:log10,lw=1,legend=:topright,label=false,minorticks=true,grid=false)
 xlims!(extrema(k*ξ)[1],ξ*kxi*1.15)
@@ -86,4 +85,4 @@ f(x) = x*(besseli(0,x)*besselk(1,x)-besseli(1,x)*besselk(0,x))
 FΛ(x) = f(x/2/Λ)^2/x
 plot!(k*ξ,FΛ.(k*ξ),line=(3,:red,.3),label=false)
 
-joinpath(@__DIR__,"central_vortex_εik.pdf") |>  savefig
+# joinpath(@__DIR__,"central_vortex_εik.pdf") |>  savefig
