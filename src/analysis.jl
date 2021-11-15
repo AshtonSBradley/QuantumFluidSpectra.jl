@@ -105,9 +105,9 @@ Returned fields `Wi`, `Wc` are tuples of cartesian components of incompressible 
 """
 function helmholtz(wx, wy, kx, ky)
     wxk = fft(wx); wyk = fft(wy)
-    @cast kw[i,j] := kx[i] * wxk[i,j] + ky[j] * wyk[i,j]
-    @cast wxkc[i,j] := kw[i,j] * kx[i] / (kx[i]^2+ky[j]^2)
-    @cast wykc[i,j] := kw[i,j] * ky[j] / (kx[i]^2+ky[j]^2)
+    @cast kw[i,j] := (kx[i] * wxk[i,j] + ky[j] * wyk[i,j])/ (kx[i]^2+ky[j]^2)
+    @cast wxkc[i,j] := kw[i,j] * kx[i] 
+    @cast wykc[i,j] := kw[i,j] * ky[j]
     wxkc[1] = zero(wxkc[1]); wykc[1] = zero(wykc[1])
     wxki = @. wxk - wxkc
     wyki = @. wyk - wykc
@@ -119,10 +119,10 @@ end
 
 function helmholtz(wx, wy, wz, kx, ky, kz)
     wxk = fft(wx); wyk = fft(wy); wzk = fft(wz)
-    @cast kw[i,j,k] = kx[i] * wxk[i,j,k] + ky[j] * wyk[i,j,k] + kz[k] * wzk[i,j,k]
-    @cast wxkc[i,j,k] := kw[i,j,k] * kx[i] / (kx[i]^2 + ky[j]^2 + kz[k]^2) 
-    @cast wykc[i,j,k] := kw[i,j,k] * ky[j] / (kx[i]^2 + ky[j]^2 + kz[k]^2)  
-    @cast wzkc[i,j,k] := kw[i,j,k] * kz[k] / (kx[i]^2 + ky[j]^2 + kz[k]^2)  
+    @cast kw[i,j,k] = (kx[i] * wxk[i,j,k] + ky[j] * wyk[i,j,k] + kz[k] * wzk[i,j,k])/ (kx[i]^2 + ky[j]^2 + kz[k]^2)
+    @cast wxkc[i,j,k] := kw[i,j,k] * kx[i]  
+    @cast wykc[i,j,k] := kw[i,j,k] * ky[j] 
+    @cast wzkc[i,j,k] := kw[i,j,k] * kz[k]  
     wxkc[1] = zero(wxkc[1]); wykc[1] = zero(wykc[1]); wzkc[1] = zero(wzkc[1])
     wxki = @. wxk - wxkc
     wyki = @. wyk - wykc
