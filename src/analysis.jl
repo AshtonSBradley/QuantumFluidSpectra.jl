@@ -6,7 +6,6 @@ The `D` gradient components returned are `D`-dimensional arrays.
 """
 function gradient(psi::Psi{1})
 	@unpack ψ,K = psi; kx = K[1] 
-	ϕ = fft(ψ)
 	ψx = ifft(im*kx.*ϕ)
     return ψx
 end
