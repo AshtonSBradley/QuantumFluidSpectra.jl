@@ -100,3 +100,18 @@ annotate!(4.9,ya,text(L"\frac{2\pi}{\xi}",10))
 joinpath(@__DIR__,"central_vortex_εik.pdf") |>  savefig
 gr()
 plot!()
+
+
+## Two point velocity correlation [check units!]
+pgfplotsx()
+ep3b = new_plot()
+r = LinRange(0,2*Rtf,1000)
+gi = gv(r,k,ekin_v_a.(k))
+plot!(r/ξ,gi,label=false,grid=false)
+vline!([Rtf/ξ],line=(1,:gray),label=false)
+ylabel!(L"g_k^i(r)")
+xlabel!(L"r/\xi")   
+xlims!(extrema(r/ξ)...)
+annotate!(45,.75,text(L"R",10))
+gr()
+plot!()
