@@ -1,8 +1,8 @@
 # Script to create the test wavefunction
 # Dynamics not required: imprint an exact GPE vortex core onto a Thomas-Fermi state
 
-using SpecialFunctions, Plots, Plots.Measures, JLD2, LaTeXStrings, QuadGK
-using QuantumFluidSpectra, VortexDistributions
+using SpecialFunctions, Plots, Plots.Measures, JLD2, LaTeXStrings, QuadGK, VortexDistributions
+using QuantumFluidSpectra
 
 function new_plot(;size=(400,200))
     fs,tfs,lw = 12,8,1.5
@@ -63,10 +63,10 @@ k = LinRange(kmin,kmax,Np)
 # εki = incompressible_spectrum(k,psiv)
 # @save joinpath(@__DIR__,"test_psi.jld2") ψv x y εki
 
-@load joinpath(@__DIR__,"test_psi.jld2") ψv x y εki
+@load joinpath(@__DIR__,"test_data/test_psi.jld2") ψv x y εki
 
 ## Fig 3 (a) ui power spectrum plot
-pgfplotsx()
+# pgfplotsx()
 ep3a = new_plot()
 
 # Analytic form homog. [PRX]
@@ -75,8 +75,7 @@ f(x) = x*(besseli(0,x)*besselk(1,x)-besseli(1,x)*besselk(0,x))
 FΛ(x) = f(x/2/Λ)^2/x
 plot!(k*ξ,FΛ.(k*ξ),line=(1,:blue,0.8),label=false)
 
-# analytic form trap 
-# Spectra with a vortex 
+# analytic spectra: vortex in trap
 Tint(x,a,b)= x*sqrt((1-x^2)/(x^2+b^2))*besselj1(a*x)
 Tv(a,b) = quadgk(x->Tint(x,a,b),0.,1.)[1]
 Mv(x,y) = x*abs2(Tv(x,y))
@@ -97,13 +96,13 @@ annotate!(0.115,ya,text(L"\frac{2\pi}{R}",10))
 annotate!(.83,ya,text(L"\frac{1}{\xi}",10))
 annotate!(4.9,ya,text(L"\frac{2\pi}{\xi}",10))
 
-joinpath(@__DIR__,"central_vortex_εik.pdf") |>  savefig
+joinpath(@__DIR__,"test_data/central_vortex_εik.pdf") |>  savefig
 gr()
 plot!()
 
 
 ## Two point velocity correlation [check units!]
-pgfplotsx()
+# pgfplotsx()
 ep3b = new_plot()
 r = LinRange(0,2*Rtf,1000)
 gi = gv(r,k,ekin_v_a.(k))
