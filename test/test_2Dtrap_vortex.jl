@@ -3,6 +3,7 @@
 
 using SpecialFunctions, Plots, Plots.Measures, JLD2, LaTeXStrings, QuadGK, VortexDistributions
 using QuantumFluidSpectra
+gr()
 
 function new_plot(;size=(400,200))
     fs,tfs,lw = 12,8,1.5
@@ -66,7 +67,7 @@ k = LinRange(kmin,kmax,Np)
 @load joinpath(@__DIR__,"test_data/test_psi.jld2") ψv x y εki
 
 ## Fig 3 (a) ui power spectrum plot
-# pgfplotsx()
+pgfplotsx()
 ep3a = new_plot()
 
 # Analytic form homog. [PRX]
@@ -85,7 +86,7 @@ plot!(k*ξ,ekin_v_a.(k)*ξ/μ,line=(4,:pink),label=false)
 
 plot!(k*ξ,εki*ξ/μ,scale=:log10,line=(1,:red),legend=:topright,label=false,minorticks=true,grid=false)
 xlims!(extrema(k*ξ)[1],ξ*kxi*1.15)
-# ylims!(1e-3,1e2)
+ylims!(1e-3,1e2)
 xlabel!(L"k \xi")
 ylabel!(L"\varepsilon^i_k(k)\xi/\mu",grid=false)
 vline!([1.0],label=false,line=(1,:gray))
@@ -95,9 +96,9 @@ ya = 6e-2
 annotate!(0.115,ya,text(L"\frac{2\pi}{R}",10))
 annotate!(.83,ya,text(L"\frac{1}{\xi}",10))
 annotate!(4.9,ya,text(L"\frac{2\pi}{\xi}",10))
-
-joinpath(@__DIR__,"test_data/central_vortex_εik.pdf") |>  savefig
-gr()
+annotate!(5,35,text(L"(a)",10))
+# joinpath(@__DIR__,"test_data/central_vortex_εik.pdf") |>  savefig
+# gr()
 plot!()
 
 
@@ -109,8 +110,14 @@ gi = gv(r,k,ekin_v_a.(k))
 plot!(r/ξ,gi,label=false,grid=false)
 vline!([Rtf/ξ],line=(1,:gray),label=false)
 ylabel!(L"g_k^i(r)")
+plot!(yticks=0:0.5:1.0)
 xlabel!(L"r/\xi")   
 xlims!(extrema(r/ξ)...)
 annotate!(45,.75,text(L"R",10))
-gr()
+annotate!(82,0.92,text(L"(b)",10))
+
+## combined plot
+l = @layout [a; b]
+pc = plot(ep3a,ep3b,layout=l,size=(430,350))
+"2d_trapvtf_combined.pdf" |> savefig
 plot!()
