@@ -36,9 +36,11 @@ We rely on Fourier spectral methods throughout. The user provides a wavefunction
 # Citation
 If you use `QuantumFluidSpectra.jl` please cite the paper
 
+```
 @article{bradley_spectral_2021,
   title = {Spectral Analysis for Compressible Quantum Fluids},
   author = {Bradley, Ashton S. and Kumar, R. Kishor and Pal, Sukla and Yu, Xiaoquan},
   year = {2021},
   journal = {arXiv preprint arXiv:2112.04012}
 }
+```
