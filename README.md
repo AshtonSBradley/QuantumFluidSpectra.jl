@@ -7,6 +7,7 @@
 
 This package provides methods to calculate energy spectra of compressible quantum fluids described by a wavefunction, including dilute-gas Bose-Einstein condensates, polariton BEC, and quantum fluids of light. 
 
+
 Fast, accurate spectral analysis provides a wealth of information about nonlinear quantum fluid dynamics. 
 
 We rely on Fourier spectral methods throughout. The user provides a wavefunction and minimal information about the spatial domain. 
@@ -31,3 +32,13 @@ We rely on Fourier spectral methods throughout. The user provides a wavefunction
 <details><summary><b>Basic Usage</b></summary>
 
 </details>
+
+# Citation
+If you use `QuantumFluidSpectra.jl` please cite the paper
+
+@article{bradley_spectral_2021,
+  title = {Spectral Analysis for Compressible Quantum Fluids},
+  author = {Bradley, Ashton S. and Kumar, R. Kishor and Pal, Sukla and Yu, Xiaoquan},
+  year = {2021},
+  journal = {arXiv preprint arXiv:2112.04012}
+}
