@@ -39,6 +39,9 @@ gi = gv(r,k,εki) # pass k vals on which εki is defined
 ```
 </details>
 
+## Example: central vortex in a 2D Bose-Einstein condensate
+For creation script, see `/example_figure/test_2Dtrap_vortex.jl`.
+
 <img src="/example_figure/central_vortex.png" width="600">
 
 
