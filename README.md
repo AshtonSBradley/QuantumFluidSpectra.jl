@@ -31,6 +31,12 @@ We rely on Fourier spectral methods throughout. The user provides a wavefunction
 </details>
 <details><summary><b>Basic Usage</b></summary>
 
+```julia 
+k = LinRange(0.05,10,300) # can be anything
+εki = incompressible_spectrum(k,psi)
+r = LinRange(0,10,300) # can be anything
+gi = gv(r,k,εki) # pass k vals on which εki is defined
+```
 </details>
 
 # Citation
