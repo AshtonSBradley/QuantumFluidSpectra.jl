@@ -12,6 +12,13 @@ Fast, accurate, and flexible spectral analysis provides a wealth of information 
 
 We rely on Fourier spectral methods throughout. The user provides a wavefunction and minimal information about the spatial domain. 
 
+## Install
+
+```julia
+julia> ]add QuantumFluidSpectra
+```
+Setting up grids and fields is described below.
+
 <details><summary><b>Create Field</b></summary>
 
 ```julia
