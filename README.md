@@ -17,7 +17,7 @@ We rely on Fourier spectral methods throughout. The user provides a wavefunction
 ```julia
 julia> ]add QuantumFluidSpectra
 ```
-Setting up grids and fields is described below.
+The setup is described below. 
 
 <details><summary><b>Create Field</b></summary>
 
@@ -36,14 +36,19 @@ Setting up grids and fields is described below.
     psi = Psi(ψ,X,K) # make field object with required arrays.
 ```
 </details>
-<details><summary><b>Basic Usage</b></summary>
-
+<details><summary><b>Power spectra and correlations</b></summary>
+To evaluate the incompressible power spectral density on a particular `k` grid:
 ```julia 
 k = LinRange(0.05,10,300) # can be anything
 εki = incompressible_spectrum(k,psi)
+```
+    
+The (angle-averaged) two-point correlator of the incompressible velocity field may then be calculated by 
+```
 r = LinRange(0,10,300) # can be anything
 gi = gv(r,k,εki) # pass k vals on which εki is defined
 ```
+See the citation below for details. 
 </details>
 
 ## Example: central vortex in a 2D Bose-Einstein condensate
