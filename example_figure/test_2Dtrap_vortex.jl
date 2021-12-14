@@ -64,7 +64,7 @@ k = LinRange(kmin,kmax,Np)
 # εki = incompressible_spectrum(k,psiv)
 # @save joinpath(@__DIR__,"test_psi.jld2") ψv x y εki
 
-@load joinpath(@__DIR__,"test_data/test_psi.jld2") ψv x y εki
+@load joinpath(@__DIR__,"test_psi.jld2") ψv x y εki
 
 ## Fig 3 (a) ui power spectrum plot
 pgfplotsx()
