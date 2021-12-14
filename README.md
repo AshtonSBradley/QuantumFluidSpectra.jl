@@ -39,7 +39,8 @@ gi = gv(r,k,εki) # pass k vals on which εki is defined
 ```
 </details>
 
-<img src="/example_figure/central_vortex_εik.pdf" width="600">
+<img src="/example_figure/central_vortex.png
+" width="600">
 
 
 # Citation
