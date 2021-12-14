@@ -1,4 +1,4 @@
-name: Julia TagBot
+name: TagBot
 on:
   issue_comment:
     types:
@@ -13,5 +13,3 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           ssh: ${{ secrets.DOCUMENTER_KEY }}
-
-
