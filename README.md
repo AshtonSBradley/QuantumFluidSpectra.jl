@@ -39,6 +39,9 @@ gi = gv(r,k,εki) # pass k vals on which εki is defined
 ```
 </details>
 
+<img src="/example_figure/central_vortex_εik.pdf" width="600">
+
+
 # Citation
 If you use `QuantumFluidSpectra.jl` please cite the paper
 
