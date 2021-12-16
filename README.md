@@ -56,6 +56,7 @@ For creation script, see `/example_figure/test_2Dtrap_vortex.jl`.
 
 <img src="/example_figure/central_vortex.png" width="600">
 
+to reproduce Figure 3(a) of [https://arxiv.org/abs/2112.04012](https://arxiv.org/abs/2112.04012}).
 
 # Citation
 If you use `QuantumFluidSpectra.jl` please cite the paper
