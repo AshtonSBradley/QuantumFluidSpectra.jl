@@ -43,7 +43,7 @@ end
 function current(psi::Psi{2})
 	@unpack ψ = psi 
     ψx,ψy = gradient(psi)
-	jx = @. imag(conj(ψ)*ψx)
+	jx = @. imag(conj(ψ)*ψx) #TODO add rot frame -n(Wxr) term, and in 3D
 	jy = @. imag(conj(ψ)*ψy)
 	return jx,jy
 end
@@ -75,7 +75,7 @@ function velocity(psi::Psi{2})
 	@unpack ψ = psi
     ψx,ψy = gradient(psi)
     rho = abs2.(ψ)
-	vx = @. imag(conj(ψ)*ψx)/rho
+	vx = @. imag(conj(ψ)*ψx)/rho #TODO make this depend on current, and in 3D
 	vy = @. imag(conj(ψ)*ψy)/rho
     @. vx[isnan(vx)] = zero(vx[1])
     @. vy[isnan(vy)] = zero(vy[1])
