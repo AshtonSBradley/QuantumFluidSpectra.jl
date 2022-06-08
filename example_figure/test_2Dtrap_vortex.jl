@@ -54,7 +54,7 @@ kR = 2*pi/Rtf
 kxi = 2*pi/ξ
 
 kmin = 0.1kR
-kmax = 1.2kxi;  
+kmax = 1.2kxi  
 Np = 1000
 k = LinRange(kmin,kmax,Np)
 
@@ -65,6 +65,7 @@ k = LinRange(kmin,kmax,Np)
 # @save joinpath(@__DIR__,"test_psi.jld2") ψv x y εki
 
 @load joinpath(@__DIR__,"test_psi.jld2") ψv x y εki
+i
 
 ## Fig 3 (a) ui power spectrum plot
 pgfplotsx()
@@ -77,7 +78,8 @@ FΛ(x) = f(x/2/Λ)^2/x
 plot!(k*ξ,FΛ.(k*ξ),line=(1,:blue,0.8),label=false)
 
 # analytic spectra: vortex in trap
-Tint(x,a,b)= x*sqrt((1-x^2)/(x^2+b^2))*besselj1(a*x)
+Tint(x,a,b)= x*sqrt((1-x^2)
+/(x^2+b^2))*besselj1(a*x)
 Tv(a,b) = quadgk(x->Tint(x,a,b),0.,1.)[1]
 Mv(x,y) = x*abs2(Tv(x,y))
 ekin_v_a(k) = Mv(k*Rtf,ξ/Λ/Rtf)*ek_unit
