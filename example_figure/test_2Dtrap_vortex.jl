@@ -41,7 +41,10 @@ ek_unit = pi*n0*Rtf^3/(2μ)
 
 ## Imprint charge 1 vortex at the origin
 pv = PointVortex(0,0.,1)
-v1 = ScalarVortex(ξ,pv)
+# v1 = ScalarVortex(ξ,pv)
+
+# check ansatz core agrees exactly with TFv
+v1 = ScalarVortex(Ansatz(VortexDistributions.ψa,ξ,Λ),pv)
 psi = Torus(copy(ψ),x,y)
 vortex!(psi,v1)
 
@@ -58,6 +61,7 @@ kmax = 1.2kxi
 Np = 1000
 k = LinRange(kmin,kmax,Np)
 
+εki = incompressible_spectrum(k,Psi(psi.ψ,X,K))
 ## calc spec and save 
 # ψv = psi.ψ
 # psiv = Psi(ψv,X,K)
@@ -65,7 +69,7 @@ k = LinRange(kmin,kmax,Np)
 # @save joinpath(@__DIR__,"test_psi.jld2") ψv x y εki
 
 @load joinpath(@__DIR__,"test_psi.jld2") ψv x y εki
-i
+
 
 ## Fig 3 (a) ui power spectrum plot
 pgfplotsx()
