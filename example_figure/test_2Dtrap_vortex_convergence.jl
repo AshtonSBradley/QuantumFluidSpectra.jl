@@ -18,7 +18,7 @@ end
 
 ## square domain
 L = 22
-N = 256
+N = 512
 μ = 30.0  
 g = 0.1
 w = 1
@@ -106,6 +106,7 @@ annotate!(5,35,text(L"(a)",10))
 # gr()
 plot!()
 
+##
 # εki 
 # ekin_v_a.(k)
 # maximum relative error as function of grid size 

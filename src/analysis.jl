@@ -286,7 +286,7 @@ function bessel_reduce(k,x,y,C)
     xp = LinRange(-Lx,Lx,Nx+1)[1:Nx]
     yq = LinRange(-Ly,Ly,Ny+1)[1:Ny]
     E = zero(k)
-    @tullio E[i] = real(besselj0(k[i]*sqrt(xp[p]^2 + yq[q]^2))*C[p,q])
+    @tullio E[i] = real(besselj0(k[i]*hypot(xp[p],yq[q]))*C[p,q])
     @. E *= k*dx*dy/2/pi 
     return E 
 end
@@ -301,7 +301,7 @@ function sinc_reduce(k,x,y,z,C)
     yq = LinRange(-Ly,Ly,Ny+1)[1:Ny]
     zr = LinRange(-Lz,Lz,Nz+1)[1:Nz]
     E = zero(k)
-    @tullio E[i] = real(π*sinc(k[i]*sqrt(xp[p]^2 + yq[q]^2 + zr[r]^2)/π)*C[p,q,r]) 
+    @tullio E[i] = real(π*sinc(k[i]*hypot(xp[p],yq[q],zr[r])/π)*C[p,q,r]) 
     @. E *= k^2*dx*dy*dz/2/pi^2  
     return E 
 end
@@ -342,7 +342,7 @@ function incompressible_spectrum(k,psi::Psi{2})
     vx,vy = velocity(psi)
     a = abs.(ψ)
     wx = @. a*vx; wy = @. a*vy
-    Wi, Wc = helmholtz(wx,wy,K...)
+    Wi, _ = helmholtz(wx,wy,K...)
     wx,wy = Wi
 
 	cx = auto_correlate(wx,X,K)
@@ -356,7 +356,7 @@ function incompressible_spectrum(k,psi::Psi{3})
     vx,vy,vz = velocity(psi)
     a = abs.(ψ)
     wx = @. a*vx; wy = @. a*vy; wz = @. a*vz
-    Wi, Wc = helmholtz(wx,wy,wz,K...)
+    Wi, _ = helmholtz(wx,wy,wz,K...)
     wx,wy,wz = Wi
 
 	cx = auto_correlate(wx,X,K)
@@ -376,8 +376,8 @@ function compressible_spectrum(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
     vx,vy = velocity(psi)
     a = abs.(ψ)
-    wx = @. abs(ψ)*vx; wy = @. abs(ψ)*vy
-    Wi, Wc = helmholtz(wx,wy,K...)
+    wx = @. a*vx; wy = @. a*vy
+    _, Wc = helmholtz(wx,wy,K...)
     wx,wy = Wc
 
 	cx = auto_correlate(wx,X,K)
@@ -391,7 +391,7 @@ function compressible_spectrum(k,psi::Psi{3})
     vx,vy,vz = velocity(psi)
     a = abs.(ψ)
     wx = @. a*vx; wy = @. a*vy; wz = @. a*vz
-    Wi, Wc = helmholtz(wx,wy,wz,K...)
+    _, Wc = helmholtz(wx,wy,wz,K...)
     wx,wy,wz = Wc
 
 	cx = auto_correlate(wx,X,K)
