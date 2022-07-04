@@ -71,12 +71,13 @@ function velocity(psi::Psi{1})
 	return vx
 end
 
-function velocity(psi::Psi{2})
-	@unpack ψ = psi
+function velocity(psi::Psi{2},Ω = 0)
+	@unpack ψ,X = psi
+    x,y = X
     ψx,ψy = gradient(psi)
     rho = abs2.(ψ)
-	vx = @. imag(conj(ψ)*ψx)/rho #TODO make this depend on current, and in 3D
-	vy = @. imag(conj(ψ)*ψy)/rho
+	vx = @. imag(conj(ψ)*ψx)/rho + Ω*y'  
+	vy = @. imag(conj(ψ)*ψy)/rho - Ω*x 
     @. vx[isnan(vx)] = zero(vx[1])
     @. vy[isnan(vy)] = zero(vy[1])
 	return vx,vy
@@ -332,7 +333,7 @@ function kinetic_density(k,psi::Psi{3})
 end
 
 """
-	incompressible_spectrum(k,ψ,X,K)
+	incompressible_spectrum(k,ψ)
 
 Caculate the incompressible velocity correlation spectrum for wavefunction ``\\psi``, via Helmholtz decomposition.
 Input arrays `X`, `K` must be computed using `makearrays`.
