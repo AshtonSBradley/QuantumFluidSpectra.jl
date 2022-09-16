@@ -37,7 +37,8 @@ The setup is described below.
 ```
 </details>
 <details><summary><b>Power spectra and correlations</b></summary>
-To evaluate the incompressible power spectral density on a particular `k` grid:
+To evaluate the incompressible power spectral density on a particular k grid:
+    
 ```julia 
 k = LinRange(0.05,10,300) # can be anything
 εki = incompressible_spectrum(k,psi)
