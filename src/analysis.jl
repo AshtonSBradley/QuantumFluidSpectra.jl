@@ -120,7 +120,7 @@ end
 
 function helmholtz(wx, wy, wz, kx, ky, kz)
     wxk = fft(wx); wyk = fft(wy); wzk = fft(wz)
-    @cast kw[i,j,k] = (kx[i] * wxk[i,j,k] + ky[j] * wyk[i,j,k] + kz[k] * wzk[i,j,k])/ (kx[i]^2 + ky[j]^2 + kz[k]^2)
+    @cast kw[i,j,k] := (kx[i] * wxk[i,j,k] + ky[j] * wyk[i,j,k] + kz[k] * wzk[i,j,k])/ (kx[i]^2 + ky[j]^2 + kz[k]^2)
     @cast wxkc[i,j,k] := kw[i,j,k] * kx[i]  
     @cast wykc[i,j,k] := kw[i,j,k] * ky[j] 
     @cast wzkc[i,j,k] := kw[i,j,k] * kz[k]  
