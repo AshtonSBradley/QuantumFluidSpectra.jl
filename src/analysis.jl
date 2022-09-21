@@ -741,6 +741,20 @@ function gv(r,k,ε)
     return gv/E
 end
 
+"""
+    gv3(r,k,ε)
+
+Transform the power spectrum `ε(k)` defined at `k` to position space to give a system averaged velocity two-point correlation function on the spatial points `r`. The vector `r` can be chosen arbitrarily, provided `r ≥ 0`. 
+"""
+function gv3(r,k,ε)
+    dk = diff(k)
+    push!(dk,last(dk))  # vanishing spectra at high k
+    E = sum(@. ε*dk)
+    gv = zero(r)
+    @tullio gv[i] = ε[j]*sinc(k[j]*r[i]/pi)*dk[j] avx=false
+    return gv/E
+end
+
 function trap_spectrum(k,V,psi::Psi{2})
     @unpack ψ,X,K = psi; x,y = X
     f = @. abs(ψ)*sqrt(V(x,y',0.))

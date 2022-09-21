@@ -19,7 +19,7 @@ include("analysis.jl")
 
 export Psi, xvecs, kvecs
 export auto_correlate, cross_correlate
-export bessel_reduce, sinc_reduce, gv
+export bessel_reduce, sinc_reduce, gv, gv3
 export log10range, convolve
 
 export xk_arrays, fft_differentials
