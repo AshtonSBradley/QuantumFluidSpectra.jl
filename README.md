@@ -63,10 +63,18 @@ to reproduce Figure 3(a) of [https://arxiv.org/abs/2112.04012](https://arxiv.org
 If you use `QuantumFluidSpectra.jl` please cite the paper
 
 ```bib
-@article{bradley_spectral_2021,
-  title = {Spectral Analysis for Compressible Quantum Fluids},
+@article{PhysRevA.106.043322,
+  title = {Spectral analysis for compressible quantum fluids},
   author = {Bradley, Ashton S. and Kumar, R. Kishor and Pal, Sukla and Yu, Xiaoquan},
-  year = {2021},
-  journal = {arXiv preprint arXiv:2112.04012}
+  journal = {Phys. Rev. A},
+  volume = {106},
+  issue = {4},
+  pages = {043322},
+  numpages = {15},
+  year = {2022},
+  month = {Oct},
+  publisher = {American Physical Society},
+  doi = {10.1103/PhysRevA.106.043322},
+  url = {https://link.aps.org/doi/10.1103/PhysRevA.106.043322}
 }
 ```
