@@ -339,9 +339,9 @@ end
 Caculate the incompressible velocity correlation spectrum for wavefunction ``\\psi``, via Helmholtz decomposition.
 Input arrays `X`, `K` must be computed using `makearrays`.
 """
-function incompressible_spectrum(k,psi::Psi{2})
+function incompressible_spectrum(k,psi::Psi{2},Ω=0.0)
     @unpack ψ,X,K = psi;  
-    vx,vy = velocity(psi)
+    vx,vy = velocity(psi,Ω)
     a = abs.(ψ)
     wx = @. a*vx; wy = @. a*vy
     Wi, _ = helmholtz(wx,wy,K...)
