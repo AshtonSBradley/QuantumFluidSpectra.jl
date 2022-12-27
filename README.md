@@ -27,7 +27,7 @@ The setup is described below.
     n = 100
     L = (1,1)
     N = (n,n)
-    X,K,dX,dK = makearrays(L,N) # setup domain
+    X,K,dX,dK = xk_arrays(L,N) # setup domain
 ```
 ```julia
 # make a test field
