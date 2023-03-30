@@ -10,7 +10,7 @@ xvec(L,N) = LinRange(-L/2,L/2,N+1)[2:end] |> collect
 
 Create `k` values with correct periodicity for box specified by length `λ` for number of points `N`.
 """
-kvec(L,N) = fftfreq(N)*N*2*π/L 
+kvec(L,N) = fftfreq(N)*N*2*π/L |> Vector
 
 
 """
