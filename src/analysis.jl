@@ -45,8 +45,8 @@ function current(psi::Psi{2},Ω = 0)
 	@unpack ψ,X = psi 
     x,y = X
     ψx,ψy = gradient(psi)
-	jx = @. imag(conj(ψ)*ψx) + Ω*y'  
-	jy = @. imag(conj(ψ)*ψy) - Ω*x
+	jx = @. imag(conj(ψ)*ψx) + Ω*abs2(ψ)*y'  
+	jy = @. imag(conj(ψ)*ψy) - Ω*abs2(ψ)*x 
 	return jx,jy
 end
 
