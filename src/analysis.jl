@@ -41,11 +41,12 @@ function current(psi::Psi{1})
     return jx
 end
 
-function current(psi::Psi{2})
-	@unpack ψ = psi 
+function current(psi::Psi{2},Ω = 0)
+	@unpack ψ,X = psi 
+    x,y = X
     ψx,ψy = gradient(psi)
-	jx = @. imag(conj(ψ)*ψx) # TODO add rot frame -n(Wxr) term, and in 3D
-	jy = @. imag(conj(ψ)*ψy)
+	jx = @. imag(conj(ψ)*ψx) + Ω*y'  
+	jy = @. imag(conj(ψ)*ψy) - Ω*x
 	return jx,jy
 end
 
