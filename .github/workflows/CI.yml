@@ -10,12 +10,13 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
+          # - '1.6'
+          - '1.8'
           - 'nightly'
         os:
           - ubuntu-latest
         arch:
-          - x64
+          # - x64
           - x86
     steps:
       - uses: actions/checkout@v2
