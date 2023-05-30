@@ -769,13 +769,21 @@ function trap_spectrum(k,V,psi::Psi{3})
     f = @. abs(ψ)*sqrt(V(x,y',reshape(z,1,1,length(z)),0.))
     C = auto_correlate(f,X,K)
 
-    return bessel_reduce(k,X...,C)
+    return sinc_reduce(k,X...,C)
 end
 
-function density_spectrum(k,psi::Psi{D}) where D
+function density_spectrum(k,psi::Psi{2}) 
     @unpack ψ,X,K = psi 
     n = abs2.(ψ)
     C = auto_correlate(n,X,K) 
 
     return bessel_reduce(k,X...,C)
+end
+
+function density_spectrum(k,psi::Psi{3}) 
+    @unpack ψ,X,K = psi 
+    n = abs2.(ψ)
+    C = auto_correlate(n,X,K) 
+
+    return sinc_reduce(k,X...,C)
 end
