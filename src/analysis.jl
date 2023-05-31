@@ -335,6 +335,18 @@ function kinetic_density(k,psi::Psi{3})
 end
 
 """
+	kdensity(k,ψ,X,K)
+
+Calculates the angle integrated momentum density ``|\\phi(k)|^2``, at the
+points `k`, with the usual radial weight in `k` space ensuring normalization under ∫dk. Arrays `X`, `K` should be computed using `makearrays`.
+"""
+function kdensity(k,psi::Psi{D}) where D
+    @unpack ψ,X,K = psi; 
+	C = auto_correlate(ψ,X,K)
+    return bessel_reduce(k,X...,C)
+end
+
+"""
 	incompressible_spectrum(k,ψ)
 
 Caculate the incompressible velocity correlation spectrum for wavefunction ``\\psi``, via Helmholtz decomposition.
