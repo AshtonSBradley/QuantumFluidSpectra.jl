@@ -7,6 +7,10 @@ using PaddedViews
 using UnPack
 using TensorCast
 
+# fallback since fast_hypot is 2 argument only
+@fastmath hypot(x::Float64, y::Float64, z::Float64)=sqrt(x^2+y^2+z^2)
+export hypot 
+
 abstract type Field end
 struct Psi{D} <: Field
     ψ::Array{Complex{Float64},D}
