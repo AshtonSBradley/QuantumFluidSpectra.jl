@@ -355,7 +355,7 @@ end
 """
 	wave_action(k,ψ,X,K)
 
-Calculates the angle integrated wave-action spectrum ``|\\phi(\mathbf{k})|^2``, at the
+Calculates the angle integrated wave-action spectrum ``|\\phi(\\mathbf{k})|^2``, at the
 points `k`, without the radial weight in `k` space ensuring normalization under ∫dk. Units will be population per wavenumber cubed. Isotropy is not assumed. Arrays `X`, `K` should be computed using `makearrays`.
 """
 wave_action(k,psi::Psi{2}) = kdensity(k,psi::Psi{2}) ./k 
