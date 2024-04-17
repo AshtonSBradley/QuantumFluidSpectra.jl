@@ -294,7 +294,7 @@ function bessel_reduce(k,x,y,C)
     xp = LinRange(-Lx,Lx,Nx+1)[1:Nx]
     yq = LinRange(-Ly,Ly,Ny+1)[1:Ny]
     E = zero(k)
-    @tullio E[i] = real(besselj0(k[i]*hypot(xp[p],yq[q]))*C[p,q])
+    @tullio E[i] = real(besselj0(k[i]*hypot(xp[p],yq[q]))*C[p,q]) 
     @. E *= k*dx*dy/2/pi 
     return E 
 end
