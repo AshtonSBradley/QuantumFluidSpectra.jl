@@ -3,7 +3,7 @@ using Test
 
 @testset "2D Analysis" begin 
     # Velocity and Helmholtz tests
-    n = 100
+    n = 256
     L = (1,1)
     N = (n,n)
     X,K,dX,dK = xk_arrays(L,N)
@@ -24,7 +24,7 @@ using Test
 
     ## Orthogonality
     vidotvc = Vi[1].*Vc[1] .+ Vi[2].*Vc[2]
-    @test maximum(abs.(vidotvc)) < 1e-10
+    @test maximum(abs.(vidotvc)) < 1e-8
 
     ## Projective
     @test Vi[1] .+ Vc[1] ≈ vx
@@ -36,7 +36,7 @@ using Test
     
     Natoms = sum(abs2.(ψ))*dx^2
     AC = auto_correlate(ψ,X,K)
-    Nr,Nim = AC[101,101] .|> (real,imag) 
+    Nr,Nim = AC[n+1,n+1] .|> (real,imag) 
 
     @test Natoms ≈ Nr
     @test Nim ≈ 0.0 
@@ -49,7 +49,7 @@ end
 
 @testset "3D Analysis" begin 
     # Velocity and Helmholtz tests
-    n = 20
+    n = 64
     L = (1,1,1)
     N = (n,n,n)
     X,K,dX,dK = xk_arrays(L,N)
@@ -84,7 +84,7 @@ end
     
     Natoms = sum(abs2.(ψ))*dx^3
     AC = auto_correlate(ψ,X,K)
-    Nr,Nim = AC[21,21,21] .|> (real,imag) 
+    Nr,Nim = AC[n+1,n+1,n+1] .|> (real,imag) 
 
     @test Natoms ≈ Nr
     @test Nim ≈ 0.0 

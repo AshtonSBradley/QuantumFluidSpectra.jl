@@ -1,8 +1,9 @@
 module QuantumFluidSpectra
 
+using Reexport
 using Tullio
 using Hwloc
-using FFTW
+@reexport using FFTW
 using SpecialFunctions
 using PaddedViews
 using UnPack
