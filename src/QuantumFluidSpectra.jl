@@ -3,11 +3,10 @@ module QuantumFluidSpectra
 using Tullio
 using Hwloc
 using FFTW
-FFTW.set_num_threads(num_physical_cores())
 using SpecialFunctions
 using PaddedViews
 using UnPack
-using TensorCast
+FFTW.set_num_threads(8)
 
 # fallback since fast_hypot is 2 argument only
 @fastmath hypot(x::Float64, y::Float64, z::Float64)=sqrt(x^2+y^2+z^2)
@@ -31,8 +30,12 @@ export log10range, convolve
 export xk_arrays, fft_differentials
 export gradient, velocity, current
 export energydecomp, helmholtz, kinetic_density
-export incompressible_spectrum, compressible_spectrum, qpressure_spectrum
-export incompressible_density, compressible_density, qpressure_density
+export incompressible_spectrum, 
+compressible_spectrum, 
+qpressure_spectrum
+export incompressible_density, 
+compressible_density, 
+qpressure_density
 export ic_density, iq_density, cq_density
 export density_spectrum, trap_spectrum
 
