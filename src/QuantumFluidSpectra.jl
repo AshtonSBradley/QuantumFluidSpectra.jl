@@ -1,7 +1,9 @@
 module QuantumFluidSpectra
 
 using Tullio
-using FFTW 
+using Hwloc
+using FFTW
+FFTW.set_num_threads(num_physical_cores())
 using SpecialFunctions
 using PaddedViews
 using UnPack
