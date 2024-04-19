@@ -1,13 +1,11 @@
 module QuantumFluidSpectra
 
-using Reexport
 using Tullio
 using Hwloc
-@reexport using FFTW
+using FFTW
 using SpecialFunctions
 using PaddedViews
 using UnPack
-FFTW.set_num_threads(8)
 
 # fallback since fast_hypot is 2 argument only
 @fastmath hypot(x::Float64, y::Float64, z::Float64)=sqrt(x^2+y^2+z^2)
