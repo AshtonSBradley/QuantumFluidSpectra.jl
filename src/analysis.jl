@@ -226,8 +226,8 @@ function convolve(ψ1,ψ2,X,K)
 	ϕ1 = zeropad(conj.(ψ1))
     ϕ2 = zeropad(ψ2)
 
-	χ1 = fft(ϕ1)*prod(DX)
-	χ2 = fft(ϕ2)*prod(DX)
+	χ1 = fft(ϕ1)*prod(DX) |> fftshift   
+	χ2 = fft(ϕ2)*prod(DX) |> fftshift
 	return ifft(χ1.*χ2)*prod(DK)*(2*pi)^(n/2) |> fftshift
 end
 
@@ -250,7 +250,7 @@ function auto_correlate(ψ,X,K)
     n = length(X)
     DX,DK = fft_differentials(X,K)
     ϕ = zeropad(ψ)
-	χ = fft(ϕ)*prod(DX)
+	χ = fft(ϕ)*prod(DX) |> fftshift
 	return ifft(abs2.(χ))*prod(DK)*(2*pi)^(n/2) |> fftshift
 end
 
@@ -276,8 +276,8 @@ function cross_correlate(ψ1,ψ2,X,K)
     DX,DK = fft_differentials(X,K)
     ϕ1 = zeropad(ψ1)
     ϕ2 = zeropad(ψ2)
-	χ1 = fft(ϕ1)*prod(DX)
-    χ2 = fft(ϕ2)*prod(DX)
+	χ1 = fft(ϕ1)*prod(DX) |> fftshift
+    χ2 = fft(ϕ2)*prod(DX) |> fftshift
 	return ifft(conj(χ1).*χ2)*prod(DK)*(2*pi)^(n/2) |> fftshift
 end
 cross_correlate(psi1::Psi{D},psi2::Psi{D}) where D = cross_correlate(psi1.ψ,psi2.ψ,psi1.X,psi1.K)
