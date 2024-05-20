@@ -36,7 +36,7 @@ using Test
     
     Natoms = sum(abs2.(ψ))*dx^2
     AC = auto_correlate(ψ,X,K)
-    Nr,Nim = AC[n+1,n+1] .|> (real,imag) 
+    Nr,Nim = AC[1,1] .|> (real,imag) 
 
     @test Natoms ≈ Nr
     @test Nim ≈ 0.0 
@@ -84,7 +84,7 @@ end
     
     Natoms = sum(abs2.(ψ))*dx^3
     AC = auto_correlate(ψ,X,K)
-    Nr,Nim = AC[n+1,n+1,n+1] .|> (real,imag) 
+    Nr,Nim = AC[1,1,1] .|> (real,imag) 
 
     @test Natoms ≈ Nr
     @test Nim ≈ 0.0 
