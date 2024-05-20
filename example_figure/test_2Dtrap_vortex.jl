@@ -138,6 +138,16 @@ pc = plot(ep3a,ep3b,layout=l,size=(430,350))
 # "2d_trapvtf_combined.pdf" |> savefig
 plot!()
 
-## test all densities add to total
+## test all densities add to total (new figure)
 # find source of UV error increase 
+Ψ = Psi(psi.ψ,X,K)
+ikd = incompressible_density(k, Ψ)
+ckd = compressible_density(k, Ψ)
+nkd = kinetic_density(k, Ψ)
+qkd = qpressure_density(k, Ψ)
+cqd = cq_density(k, Ψ)
+iqd = iq_density(k, Ψ)
+icd = ic_density(k, Ψ)
+
+plot(k, [ikd,ckd,nkd,qkd,cqd,iqd,icd], label=[L"n^{i}" L"n^c" L"n^k" L"n^q" L"n^{cq}" L"n^{iq}" L"n^{ic}"], xlabel=L"k", ylabel=L"n(k)", title="U=0.2", legend=:topleft)
 
