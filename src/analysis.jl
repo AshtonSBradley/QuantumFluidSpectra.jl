@@ -297,8 +297,8 @@ function bessel_reduce(k,x,y,C)
     Nx,Ny = 2*length(x),2*length(y)
     Lx = x[end] - x[begin] + dx
     Ly = y[end] - y[begin] + dy
-    xp = LinRange(-Lx,Lx,Nx+1)[1:Nx]
-    yq = LinRange(-Ly,Ly,Ny+1)[1:Ny]
+    xp = LinRange(-Lx,Lx,Nx+1)[1:Nx] |> fftshift
+    yq = LinRange(-Ly,Ly,Ny+1)[1:Ny] |> fftshift
     E = zero(k)
     @tullio E[i] = real(besselj0(k[i]*hypot(xp[p],yq[q]))*C[p,q])
     @. E *= k*dx*dy/2/pi 
@@ -311,9 +311,9 @@ function sinc_reduce(k,x,y,z,C)
     Lx = x[end] - x[begin] + dx
     Ly = y[end] - y[begin] + dy
     Lz = z[end] - z[begin] + dz
-    xp = LinRange(-Lx,Lx,Nx+1)[1:Nx]
-    yq = LinRange(-Ly,Ly,Ny+1)[1:Ny]
-    zr = LinRange(-Lz,Lz,Nz+1)[1:Nz]
+    xp = LinRange(-Lx,Lx,Nx+1)[1:Nx] |> fftshift
+    yq = LinRange(-Ly,Ly,Ny+1)[1:Ny] |> fftshift 
+    zr = LinRange(-Lz,Lz,Nz+1)[1:Nz] |> fftshift
     E = zero(k)
     @tullio E[i] = real(π*sinc(k[i]*hypot(xp[p],yq[q],zr[r])/π)*C[p,q,r]) 
     @. E *= k^2*dx*dy*dz/2/pi^2  
