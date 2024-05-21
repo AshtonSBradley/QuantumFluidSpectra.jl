@@ -136,40 +136,71 @@ function helmholtz(wx, wy, wz, kx, ky, kz)
     return Wi, Wc
 end
 
-# function helmholtz(W::NTuple{N,Array{Float64,N}}, psi::Psi{N}) where N
-#     return helmholtz(W..., psi)
-# end
+function helmholtz_incompressible(wx, wy, wz, kx, ky, kz)
+    wxk = fft(wx); wyk = fft(wy); wzk = fft(wz)
+    kzr = reshape(kz,1,1,length(kz))
+    kw = @. (kx * wxk + ky' * wyk + kzr * wzk)/ (kx^2 + ky'^2 + kzr^2)
+    wxkc = @. kw * kx  
+    wykc = @. kw * ky'
+    wzkc = @. kw * kzr  
+    wxkc[1] = zero(wxkc[1]); wykc[1] = zero(wykc[1]); wzkc[1] = zero(wzkc[1])
+    @. wxk -= wxkc
+    @. wyk -= wykc
+    @. wzk -= wzkc
+    ifft!(wxk)
+    ifft!(wyk)
+    ifft!(wzk)
+    return wxk, wyk, wzk
+end
+
+function helmholtz_compressible(wx, wy, wz, kx, ky, kz)
+    wxk = fft(wx); wyk = fft(wy); wzk = fft(wz)
+    kzr = reshape(kz,1,1,length(kz))
+    kw = @. (kx * wxk + ky' * wyk + kzr * wzk)/ (kx^2 + ky'^2 + kzr^2)
+    wxkc = @. kw * kx  
+    wykc = @. kw * ky'
+    wzkc = @. kw * kzr  
+    wxkc[1] = zero(wxkc[1]); wykc[1] = zero(wykc[1]); wzkc[1] = zero(wzkc[1])
+    wxc = ifft(wxkc); wyc = ifft(wykc); wzc = ifft(wzkc)
+
+    return wxc,wyc,wzc
+end
 
 """
-	et,ei,ec = energydecomp(psi::Xfield{D})
+	ei,ec = energydecomp(psi::Xfield{D})
 
-Decomposes the hydrodynamic kinetic energy of `psi`, returning the total `et`, incompressible `ei`,
+Decomposes the hydrodynamic kinetic energy of `psi`, returning the total incompressible `ei`,
 and compressible `ec` energy densities in position space. `D` can be 2 or 3 dimensions.
 """
 function energydecomp(psi::Psi{2})
-    @unpack ψ,K = psi; kx,ky = K
+    @unpack ψ,K,X = psi; kx,ky = K
+    dx = X[1][2] - X[1][1]
+    dy = X[2][2] - X[2][1]
     a = abs.(ψ)
     vx, vy = velocity(psi)
     wx = @. a*vx; wy = @. a*vy
     Wi, Wc = helmholtz(wx,wy,kx,ky)
     wxi, wyi = Wi; wxc, wyc = Wc
-    et = @. abs2(wx) + abs2(wy); et *= 0.5
-    ei = @. abs2(wxi) + abs2(wyi); ei *= 0.5
-    ec = @. abs2(wxc) + abs2(wyc); ec *= 0.5
-    return et, ei, ec
+    ei = 0.5*sum(@. abs2(wxi) + abs2(wyi))*dx*dy
+    ec = 0.5*sum(@. abs2(wxc) + abs2(wyc))*dx*dy
+    return ei, ec
 end
 
 function energydecomp(psi::Psi{3})
-	@unpack ψ,K = psi; kx,ky,kz = K
+	@unpack ψ,K,X = psi; kx,ky,kz = K
+    dx = X[1][2] - X[1][1]
+    dy = X[2][2] - X[2][1]
+    dz = X[3][2] - X[3][1]
     a = abs.(ψ)
     vx,vy,vz = velocity(psi)
     wx = @. a*vx; wy = @. a*vy; wz = @. a*vz
     Wi, Wc = helmholtz(wx,wy,wz,kx,ky,kz)
+    vx = nothing; vy = nothing; vz = nothing; GC.gc()
     wxi, wyi, wzi = Wi; wxc, wyc, wzc = Wc
-    et = @. abs2(wx) + abs2(wy) + abs2(wz); et *= 0.5
-    ei = @. abs2(wxi) + abs2(wyi) + abs2(wzi); ei *= 0.5
-    ec = @. abs2(wxc) + abs2(wyc) + abs2(wzc); ec *= 0.5
-    return et, ei, ec
+    Wi = nothing; Wc = nothing; GC.gc()
+    ei = 0.5*sum(@. abs2(wxi) + abs2(wyi) + abs2(wzi))*dx*dy*dz
+    ec = 0.5*sum(@. abs2(wxc) + abs2(wyc) + abs2(wzc))*dx*dy*dz
+    return ei, ec
 end
 
 """
@@ -226,9 +257,14 @@ function convolve(ψ1,ψ2,X,K)
 	ϕ1 = zeropad(conj.(ψ1))
     ϕ2 = zeropad(ψ2)
 
-	χ1 = fft(ϕ1)*prod(DX)
-	χ2 = fft(ϕ2)*prod(DX)
-	return ifft(χ1.*χ2)*prod(DK)*(2*pi)^(n/2) |> fftshift
+    fft!(ϕ1); fft!(ϕ2)
+    ϕ1 .*= prod(DX); ϕ2 .*= prod(DX)
+    @. ϕ1 *= ϕ2 
+    ϕ2 = nothing; GC.gc()
+    ifft!(ϕ1)
+    ϕ1 .*= prod(DK)*(2*pi)^(n/2)
+
+	return ϕ1
 end
 
 @doc raw"""
@@ -251,14 +287,16 @@ function auto_correlate(ψ,X,K)
     DX,DK = fft_differentials(X,K)
     ϕ = zeropad(ψ)
 	fft!(ϕ)
-    @. ϕ *= $prod(DX)
+    dμx = prod(DX)
+    @. ϕ *= dμx
 
     Threads.@threads for i in eachindex(ϕ)
         ϕ[i] = abs2(ϕ[i])
     end
 
     ifft!(ϕ)
-    @. ϕ *= $prod(DK)*(2*π)^(n/2) 
+    dμk = prod(DK)*(2*π)^(n/2) 
+    @. ϕ *= dμk
 	return ϕ |> fftshift
 end
 
@@ -336,10 +374,13 @@ end
 function kinetic_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi;  
     ψx,ψy,ψz = gradient(psi)
-	cx = auto_correlate(ψx,X,K)
-    cy = auto_correlate(ψy,X,K)
-    cz = auto_correlate(ψz,X,K)
-    C = @. 0.5(cx + cy + cz)
+	C = auto_correlate(ψx,X,K)
+    ψx = nothing; GC.gc()
+    @. C += $auto_correlate(ψy,X,K)
+    ψy = nothing; GC.gc()
+    @. C += $auto_correlate(ψz,X,K)
+    ψz = nothing; GC.gc()
+    @. C *= 0.5 
     return sinc_reduce(k,X...,C)
 end
 
@@ -392,16 +433,20 @@ end
 
 function incompressible_spectrum(k,psi::Psi{3})
     @unpack ψ,X,K = psi; 
-    vx,vy,vz = velocity(psi)
-    a = abs.(ψ)
-    wx = @. a*vx; wy = @. a*vy; wz = @. a*vz
-    Wi, _ = helmholtz(wx,wy,wz,K...)
-    wx,wy,wz = Wi
+    wx, wy, wz = velocity(psi)
+    @. wx *= abs(ψ)
+    @. wy *= abs(ψ)
+    @. wz *= abs(ψ)
 
-	cx = auto_correlate(wx,X,K)
-    cy = auto_correlate(wy,X,K)
-    cz = auto_correlate(wz,X,K)
-    C = @. 0.5*(cx + cy + cz)
+    wx,wy,wz = helmholtz_incompressible(wx,wy,wz,K...)
+
+    C = auto_correlate(wx,X,K)
+    wx = nothing; GC.gc()
+    @. C += $auto_correlate(wy,X,K)
+    wy = nothing; GC.gc()
+    @. C += $auto_correlate(wz,X,K)
+    wz = nothing; GC.gc()
+    @. C *= 0.5
     return sinc_reduce(k,X...,C)
 end
 
@@ -427,16 +472,20 @@ end
 
 function compressible_spectrum(k,psi::Psi{3})
     @unpack ψ,X,K = psi
-    vx,vy,vz = velocity(psi)
-    a = abs.(ψ)
-    wx = @. a*vx; wy = @. a*vy; wz = @. a*vz
-    _, Wc = helmholtz(wx,wy,wz,K...)
-    wx,wy,wz = Wc
+    wx, wy, wz = velocity(psi)
+    @. wx *= abs(ψ)
+    @. wy *= abs(ψ)
+    @. wz *= abs(ψ)
 
-	cx = auto_correlate(wx,X,K)
-    cy = auto_correlate(wy,X,K)
-    cz = auto_correlate(wz,X,K)
-    C = @. 0.5*(cx + cy + cz)
+    wx,wy,wz = helmholtz_compressible(wx,wy,wz,K...)
+
+    C = auto_correlate(wx,X,K)
+    wx = nothing; GC.gc()
+    @. C += $auto_correlate(wy,X,K)
+    wy = nothing; GC.gc()
+    @. C += $auto_correlate(wz,X,K)
+    wz = nothing; GC.gc()
+    @. C *= 0.5
     return sinc_reduce(k,X...,C)
 end
 
@@ -459,13 +508,15 @@ end
 
 function qpressure_spectrum(k,psi::Psi{3})
     @unpack ψ,X,K = psi
-    psia = Psi(abs.(ψ) |> complex,X,K )
-    wx,wy,wz = gradient(psia)
+    wx,wy,wz = gradient(Psi(abs.(ψ) |> complex,X,K ))
 
-	cx = auto_correlate(wx,X,K)
-    cy = auto_correlate(wy,X,K)
-    cz = auto_correlate(wz,X,K)
-    C = @. 0.5*(cx + cy + cz)
+    C = auto_correlate(wx,X,K)
+    wx = nothing; GC.gc()
+    @. C += $auto_correlate(wy,X,K)
+    wy = nothing; GC.gc()
+    @. C += $auto_correlate(wz,X,K)
+    wz = nothing; GC.gc()
+    @. C *= 0.5
     return sinc_reduce(k,X...,C)
 end
 
@@ -494,20 +545,25 @@ end
 
 function incompressible_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi 
-    vx,vy,vz = velocity(psi)
-    a = abs.(ψ)
-    ux = @. a*vx; uy = @. a*vy; uz = @. a*vz
-    Wi, Wc = helmholtz(ux,uy,uz,K...)
-    wix,wiy,wiz = Wi
-    U = @. exp(im*angle(ψ))
-    @. wix *= U # restore phase factors
-    @. wiy *= U
-    @. wiz *= U
+    wx,wy,wz = velocity(psi)
 
-	cx = auto_correlate(wix,X,K)
-    cy = auto_correlate(wiy,X,K)
-    cz = auto_correlate(wiz,X,K)
-    C = @. 0.5*(cx + cy + cz)
+    @. wx *= abs(ψ)
+    @. wy *= abs(ψ)
+    @. wz *= abs(ψ)
+
+    wx,wy,wz = helmholtz_incompressible(wx,wy,wz,K...)
+
+    @. wx *= exp(im*angle(ψ))  
+    @. wy *= exp(im*angle(ψ))
+    @. wz *= exp(im*angle(ψ))
+
+	C = auto_correlate(wx,X,K)
+    wx = nothing; GC.gc()
+    @. C += $auto_correlate(wy,X,K)
+    wy = nothing; GC.gc()
+    @. C += $auto_correlate(wz,X,K)
+    wz = nothing; GC.gc()
+    @. C *= 0.5
     return sinc_reduce(k,X...,C)
 end
 
@@ -536,20 +592,25 @@ end
 
 function compressible_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi 
-    vx,vy,vz = velocity(psi)
-    a = abs.(ψ)
-    ux = @. a*vx; uy = @. a*vy; uz = @. a*vz
-    Wi, Wc = helmholtz(ux,uy,uz,K...)
-    wcx,wcy,wcz = Wc
-    U = @. exp(im*angle(ψ))
-    @. wcx *= U # restore phase factors
-    @. wcy *= U
-    @. wcz *= U
+    wx,wy,wz = velocity(psi)
 
-	cx = auto_correlate(wcx,X,K)
-    cy = auto_correlate(wcy,X,K)
-    cz = auto_correlate(wcz,X,K)
-    C = @. 0.5*(cx + cy + cz)
+    @. wx *= abs(ψ)
+    @. wy *= abs(ψ)
+    @. wz *= abs(ψ)
+
+    wx,wy,wz = helmholtz_compressible(wx,wy,wz,K...)
+
+    @. wx *= exp(im*angle(ψ))
+    @. wy *= exp(im*angle(ψ))
+    @. wz *= exp(im*angle(ψ))
+
+    C = auto_correlate(wx,X,K)
+    wx = nothing; GC.gc()
+    @. C += $auto_correlate(wy,X,K)
+    wy = nothing; GC.gc()
+    @. C += $auto_correlate(wz,X,K)
+    wz = nothing; GC.gc()
+    @. C *= 0.5
     return sinc_reduce(k,X...,C)
 end
 
@@ -575,17 +636,19 @@ end
 
 function qpressure_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi
-    psia = Psi(abs.(ψ) |> complex,X,K )
-    rnx,rny,rnz = gradient(psia)
-    U = @. exp(im*angle(ψ))
-    @. rnx *= U # restore phase factors
-    @. rny *= U 
-    @. rnz *= U 
+    wx,wy,wz = gradient(Psi(abs.(ψ) |> complex,X,K ))
 
-	cx = auto_correlate(rnx,X,K)
-    cy = auto_correlate(rny,X,K)
-    cz = auto_correlate(rnz,X,K)
-    C = @. 0.5*(cx + cy + cz)
+    @. wx *= exp(im*angle(ψ))
+    @. wy *= exp(im*angle(ψ))
+    @. wz *= exp(im*angle(ψ))
+
+	C = auto_correlate(wx,X,K)
+    wx = nothing; GC.gc()
+    @. C += $auto_correlate(wy,X,K)
+    wy = nothing; GC.gc()
+    @. C += $auto_correlate(wz,X,K)
+    wz = nothing; GC.gc()
+    @. C = 0.5
     return sinc_reduce(k,X...,C)
 end
 
@@ -620,26 +683,31 @@ end
 
 function ic_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi 
-    vx,vy,vz = velocity(psi)
-    a = abs.(ψ)
-    ux = @. a*vx; uy = @. a*vy; uz = @. a*vz 
-    Wi, Wc = helmholtz(ux,uy,uz,K...)
-    wix,wiy,wiz = Wi; wcx,wcy,wcz = Wc
-    U = @. exp(im*angle(ψ))
-    @. wix *= im*U # restore phase factors and make u -> w fields
-    @. wiy *= im*U
-    @. wiz *= im*U   
-    @. wcx *= im*U 
-    @. wcy *= im*U
-    @. wcz *= im*U
+    wx,wy,wz = velocity(psi)
 
-    cicx = convolve(wix,wcx,X,K) 
-    ccix = convolve(wcx,wix,X,K)
-    cicy = convolve(wiy,wcy,X,K) 
-    cciy = convolve(wcy,wiy,X,K)
-    cicz = convolve(wiz,wcz,X,K) 
-    cciz = convolve(wcz,wiz,X,K)
-    C = @. 0.5*(cicx + ccix + cicy + cciy + cicz + cciz)  
+    @. wx *= abs(ψ)
+    @. wy *= abs(ψ)
+    @. wz *= abs(ψ)
+
+    Wi, Wc = helmholtz(wx,wy,wz,K...)
+    wix,wiy,wiz = Wi; wcx,wcy,wcz = Wc
+
+    wx = nothing; wy = nothing; wz = nothing; GC.gc()
+
+    @. wix *= im*exp(im*angle(ψ))  
+    @. wiy *= im*exp(im*angle(ψ))
+    @. wiz *= im*exp(im*angle(ψ))  
+    @. wcx *= im*exp(im*angle(ψ)) 
+    @. wcy *= im*exp(im*angle(ψ))
+    @. wcz *= im*exp(im*angle(ψ))
+
+    C = convolve(wix,wcx,X,K); GC.gc()
+    C .+= convolve(wcx,wix,X,K); wix = nothing; wcx = nothing; GC.gc() 
+    C .+= convolve(wiy,wcy,X,K); GC.gc()
+    C .+= convolve(wcy,wiy,X,K); wcy = nothing; wiy = nothing; GC.gc()
+    C .+= convolve(wiz,wcz,X,K); GC.gc() 
+    C .+= convolve(wcz,wiz,X,K); wcz = nothing; wiz = nothing; GC.gc()
+    @. C *= 0.5  
     return sinc_reduce(k,X...,C)
 end
 
@@ -676,30 +744,30 @@ end
 
 function iq_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi 
-    vx,vy,vz = velocity(psi)
-    a = abs.(ψ)
-    ux = @. a*vx; uy = @. a*vy; uz = @. a*vz
-    Wi, Wc = helmholtz(ux,uy,uz,K...)
-    wix,wiy,wiz = Wi
+    wx,wy,wz = velocity(psi)
 
-    psia = Psi(abs.(ψ) |> complex,X,K )
-    wqx,wqy,wqz = gradient(psia)
+    @. wx *= abs(ψ)
+    @. wy *= abs(ψ)
+    @. wz *= abs(ψ)
+
+    wix,wiy,wiz = helmholtz_incompressible(wx,wy,wz,K...)
+    wx,wy,wz = gradient(Psi(abs.(ψ) |> complex,X,K ))
 
     U = @. exp(im*angle(ψ))
     @. wix *= im*U # phase factors and make u -> w fields
     @. wiy *= im*U
     @. wiz *= im*U
-    @. wqx *= U
-    @. wqy *= U
-    @. wqz *= U
+    @. wx *= U
+    @. wy *= U
+    @. wz *= U
 
-    ciqx = convolve(wix,wqx,X,K) 
-    cqix = convolve(wqx,wix,X,K) 
-    ciqy = convolve(wiy,wqy,X,K) 
-    cqiy = convolve(wqy,wiy,X,K) 
-    ciqz = convolve(wiz,wqz,X,K) 
-    cqiz = convolve(wqz,wiz,X,K) 
-    C = @. 0.5*(ciqx + cqix + ciqy + cqiy + ciqz + cqiz) 
+    C = convolve(wix,wx,X,K); GC.gc()
+    C .+= convolve(wx,wix,X,K); wix = nothing; wx = nothing; GC.gc() 
+    C .+= convolve(wiy,wy,X,K); GC.gc()
+    C .+= convolve(wy,wiy,X,K); wy = nothing; wiy = nothing; GC.gc()
+    C .+= convolve(wiz,wz,X,K); GC.gc() 
+    C .+= convolve(wz,wiz,X,K); wz = nothing; wiz = nothing; GC.gc()
+    @. C *= 0.5  
     return sinc_reduce(k,X...,C)
 end
 
@@ -737,30 +805,32 @@ end
 
 function cq_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi 
-    vx,vy,vz = velocity(psi)
-    a = abs.(ψ)
-    ux = @. a*vx; uy = @. a*vy; uz = @. a*vz
-    Wi, Wc = helmholtz(ux,uy,uz,K...)
+    wx,wy,wz = velocity(psi)
+
+    @. wx *= abs(ψ)
+    @. wy *= abs(ψ)
+    @. wz *= abs(ψ)
+
+    wcx,wcy,wcz = helmholtz_compressible(wx,wy,wz,K...)
     wcx,wcy,wcz = Wc  
 
-    psia = Psi(abs.(ψ) |> complex,X,K)
-    wqx,wqy,wqz = gradient(psia)
+    wx,wy,wz = gradient(Psi(abs.(ψ) |> complex,X,K))
 
     U = @. exp(im*angle(ψ))
     @. wcx *= im*U # phase factors and make u -> w fields
     @. wcy *= im*U
     @. wcz *= im*U
-    @. wqx *= U
-    @. wqy *= U
-    @. wqz *= U
+    @. wx *= U
+    @. wy *= U
+    @. wz *= U
 
-    ccqx = convolve(wcx,wqx,X,K) 
-    cqcx = convolve(wqx,wcx,X,K) 
-    ccqy = convolve(wcy,wqy,X,K) 
-    cqcy = convolve(wqy,wcy,X,K) 
-    ccqz = convolve(wcz,wqz,X,K) 
-    cqcz = convolve(wqz,wcz,X,K) 
-    C = @. 0.5*(ccqx + cqcx + ccqy + cqcy + ccqz + cqcz) 
+    C = convolve(wcx,wx,X,K); GC.gc()
+    C .+= convolve(wx,wcx,X,K); wcx = nothing; wx = nothing; GC.gc() 
+    C .+= convolve(wcy,wy,X,K); GC.gc()
+    C .+= convolve(wy,wcy,X,K); wy = nothing; wcy = nothing; GC.gc()
+    C .+= convolve(wcz,wz,X,K); GC.gc() 
+    C .+= convolve(wz,wcz,X,K); wz = nothing; wcz = nothing; GC.gc()
+    @. C *= 0.5  
     return sinc_reduce(k,X...,C)
 end
 
