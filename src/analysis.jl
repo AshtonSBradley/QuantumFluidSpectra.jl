@@ -326,7 +326,7 @@ function cross_correlate(ψ1,ψ2,X,K)
     ifft!(ϕ1)
     dμk = prod(DK)*(2*π)^(n/2)
     ϕ1 .*= dμk
-	return ϕ1 |> fftshift
+	return ϕ1  
 end
 
 
