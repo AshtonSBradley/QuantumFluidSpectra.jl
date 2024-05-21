@@ -297,7 +297,7 @@ function auto_correlate(ψ,X,K)
     ifft!(ϕ)
     dμk = prod(DK)*(2*π)^(n/2) 
     @. ϕ *= dμk
-	return ϕ |> fftshift
+	return ϕ  
 end
 
 auto_correlate(psi::Psi{D}) where D = auto_correlate(psi.ψ,psi.X,psi.K)
