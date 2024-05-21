@@ -297,13 +297,13 @@ function auto_correlate(ψ,X,K)
     ifft!(ϕ)
     dμk = prod(DK)*(2*π)^(n/2) 
     @. ϕ *= dμk
-	return ϕ |> fftshift
+	return ϕ  
 end
 
 auto_correlate(psi::Psi{D}) where D = auto_correlate(psi.ψ,psi.X,psi.K)
 
 @doc raw"""
-	cross_correlate(ψ,X,K)
+	cross_correlate(ψ1,ψ2,X,K)
 
 Cross correlation of complex field ``\psi_1``, and ``\psi_2`` given by
 
@@ -320,12 +320,16 @@ This method is useful for evaluating spectra from cartesian data.
 function cross_correlate(ψ1,ψ2,X,K)
     n = length(X)
     DX,DK = fft_differentials(X,K)
-    ϕ1 = zeropad(ψ1)
-    ϕ2 = zeropad(ψ2)
-	χ1 = fft(ϕ1)*prod(DX)
-    χ2 = fft(ϕ2)*prod(DX)
-	return ifft(conj(χ1).*χ2)*prod(DK)*(2*pi)^(n/2) |> fftshift
+    ϕ1 = zeropad(conj.(ψ1)); fft!(ϕ1); dμx = prod(DX); @. ϕ1 *= dμx
+    ϕ2 = zeropad(ψ2); fft!(ϕ2); @. ϕ2 *= dμx
+    @. ϕ1 *= ϕ2
+    ifft!(ϕ1)
+    dμk = prod(DK)*(2*π)^(n/2)
+    ϕ1 .*= dμk
+	return ϕ1 
 end
+
+
 cross_correlate(psi1::Psi{D},psi2::Psi{D}) where D = cross_correlate(psi1.ψ,psi2.ψ,psi1.X,psi1.K)
 
 function bessel_reduce(k,x,y,C)
