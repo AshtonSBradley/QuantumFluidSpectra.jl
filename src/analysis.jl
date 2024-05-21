@@ -250,8 +250,16 @@ function auto_correlate(ψ,X,K)
     n = length(X)
     DX,DK = fft_differentials(X,K)
     ϕ = zeropad(ψ)
-	χ = fft(ϕ)*prod(DX)
-	return ifft(abs2.(χ))*prod(DK)*(2*pi)^(n/2) |> fftshift
+	fft!(ϕ)
+    @. ϕ *= $prod(DX)
+
+    Threads.@threads for i in eachindex(ϕ)
+        ϕ[i] = abs2(ϕ[i])
+    end
+
+    ifft!(ϕ)
+    @. ϕ *= $prod(DK)*(2*π)^(n/2) 
+	return ϕ |> fftshift
 end
 
 auto_correlate(psi::Psi{D}) where D = auto_correlate(psi.ψ,psi.X,psi.K)
@@ -649,7 +657,7 @@ function iq_density(k,psi::Psi{2})
     Wi, Wc = helmholtz(ux,uy,K...)
     wix,wiy = Wi 
 
-    psia = Psi(abs.(ψ) |> complex,X,K )
+    psia = Psi(a |> complex,X,K )
     wqx,wqy = gradient(psia)
 
     U = @. exp(im*angle(ψ))

@@ -16,9 +16,9 @@ function new_plot(;size=(400,200))
     return p
 end
 
-## square domain
+## square domain in oscillator units
 L = 22
-N = 256
+N = 512
 μ = 30.0  
 g = 0.1
 w = 1
@@ -151,3 +151,6 @@ icd = ic_density(k, Ψ)
 
 plot(k, [ikd,ckd,nkd,qkd,cqd,iqd,icd], label=[L"n^{i}" L"n^c" L"n^k" L"n^q" L"n^{cq}" L"n^{iq}" L"n^{ic}"], xlabel=L"k", ylabel=L"n(k)", title="U=0.2", legend=:topleft)
 
+
+plot(k*ξ, [nkd,ikd+ckd+qkd+cqd+iqd+icd], label=[L"n^k" "sum"], xlabel=L"k", ylabel=L"n(k)", title="U=0.2", legend=:topleft)
+xlims!(0,1)
