@@ -811,8 +811,7 @@ function cq_density(k,psi::Psi{3})
     @. wy *= abs(ψ)
     @. wz *= abs(ψ)
 
-    wcx,wcy,wcz = helmholtz_compressible(wx,wy,wz,K...)
-    wcx,wcy,wcz = Wc  
+    wcx,wcy,wcz = helmholtz_compressible(wx,wy,wz,K...) 
 
     wx,wy,wz = gradient(Psi(abs.(ψ) |> complex,X,K))
 
