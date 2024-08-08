@@ -242,7 +242,7 @@ function log10range(a,b,n)
 end
 
 @doc raw"""
-	A = convolve(ψ1,ψ2,X,K)
+	convolve(ψ1,ψ2,X,K)
 
 Computes the convolution of two complex fields according to
 
@@ -259,11 +259,14 @@ function convolve(ψ1,ψ2,X,K)
 
     fft!(ϕ1); fft!(ϕ2)
     ϕ1 .*= prod(DX); ϕ2 .*= prod(DX)
-    @. ϕ1 *= ϕ2 
+    ϕ1 .*= ϕ2 
     ϕ2 = nothing; GC.gc()
     ifft!(ϕ1)
     ϕ1 .*= prod(DK)*(2*pi)^(n/2)
-
+    
+    # udpates to get this right
+    ϕ1 = fftshift(ϕ1)  # correct shift?
+    # ϕ1 = reverse(ϕ1)   # reverse to get correct convolution?
 	return ϕ1
 end
 
@@ -297,7 +300,7 @@ function auto_correlate(ψ,X,K)
     ifft!(ϕ)
     dμk = prod(DK)*(2*π)^(n/2) 
     @. ϕ *= dμk
-	return ϕ  
+	return fftshift(ϕ) # |> reverse
 end
 
 auto_correlate(psi::Psi{D}) where D = auto_correlate(psi.ψ,psi.X,psi.K)
@@ -320,13 +323,14 @@ This method is useful for evaluating spectra from cartesian data.
 function cross_correlate(ψ1,ψ2,X,K)
     n = length(X)
     DX,DK = fft_differentials(X,K)
-    ϕ1 = zeropad(conj.(ψ1)); fft!(ϕ1); dμx = prod(DX); @. ϕ1 *= dμx
+    ϕ1 = zeropad(conj.(ψ1)); fft!(ϕ1); dμx = prod(DX)
+    @. ϕ1 *= dμx
     ϕ2 = zeropad(ψ2); fft!(ϕ2); @. ϕ2 *= dμx
     @. ϕ1 *= ϕ2
     ifft!(ϕ1)
     dμk = prod(DK)*(2*π)^(n/2)
     ϕ1 .*= dμk
-	return ϕ1  
+	return fftshift(ϕ1) # |> reverse
 end
 
 
@@ -337,8 +341,8 @@ function bessel_reduce(k,x,y,C)
     Nx,Ny = 2*length(x),2*length(y)
     Lx = x[end] - x[begin] 
     Ly = y[end] - y[begin] 
-    xp = LinRange(-Lx,Lx,Nx+1)[1:Nx] |> fftshift
-    yq = LinRange(-Ly,Ly,Ny+1)[1:Ny] |> fftshift
+    xp = LinRange(-Lx,Lx,Nx+1)[1:Nx] #|> fftshift
+    yq = LinRange(-Ly,Ly,Ny+1)[1:Ny] #|> fftshift
     E = zero(k)
     @tullio E[i] = real(besselj0(k[i]*hypot(xp[p],yq[q]))*C[p,q])
     @. E *= k*dx*dy/2/pi 
@@ -351,9 +355,9 @@ function sinc_reduce(k,x,y,z,C)
     Lx = x[end] - x[begin] 
     Ly = y[end] - y[begin] 
     Lz = z[end] - z[begin] 
-    xp = LinRange(-Lx,Lx,Nx+1)[1:Nx] |> fftshift
-    yq = LinRange(-Ly,Ly,Ny+1)[1:Ny] |> fftshift
-    zr = LinRange(-Lz,Lz,Nz+1)[1:Nz] |> fftshift
+    xp = LinRange(-Lx,Lx,Nx+1)[1:Nx] #|> fftshift
+    yq = LinRange(-Ly,Ly,Ny+1)[1:Ny] #|> fftshift
+    zr = LinRange(-Lz,Lz,Nz+1)[1:Nz] #|> fftshift
     E = zero(k)
     @tullio E[i] = real(π*sinc(k[i]*hypot(xp[p],yq[q],zr[r])/π)*C[p,q,r]) 
     @. E *= k^2*dx*dy*dz/2/pi^2  
@@ -378,13 +382,10 @@ end
 function kinetic_density(k,psi::Psi{3})
     @unpack ψ,X,K = psi;  
     ψx,ψy,ψz = gradient(psi)
-	C = auto_correlate(ψx,X,K)
-    ψx = nothing; GC.gc()
-    @. C += $auto_correlate(ψy,X,K)
-    ψy = nothing; GC.gc()
-    @. C += $auto_correlate(ψz,X,K)
-    ψz = nothing; GC.gc()
-    @. C *= 0.5 
+	C = auto_correlate(ψx,X,K);     ψx = nothing; GC.gc()
+    C .+= auto_correlate(ψy,X,K);   ψy = nothing; GC.gc()
+    C .+= auto_correlate(ψz,X,K);   ψz = nothing; GC.gc()
+    C .*= 0.5 
     return sinc_reduce(k,X...,C)
 end
 
@@ -444,13 +445,10 @@ function incompressible_spectrum(k,psi::Psi{3})
 
     wx,wy,wz = helmholtz_incompressible(wx,wy,wz,K...)
 
-    C = auto_correlate(wx,X,K)
-    wx = nothing; GC.gc()
-    @. C += $auto_correlate(wy,X,K)
-    wy = nothing; GC.gc()
-    @. C += $auto_correlate(wz,X,K)
-    wz = nothing; GC.gc()
-    @. C *= 0.5
+    C = auto_correlate(wx,X,K);     wx = nothing; GC.gc()
+    C .+= auto_correlate(wy,X,K);   wy = nothing; GC.gc()
+    C .+= auto_correlate(wz,X,K);   wz = nothing; GC.gc()
+    C .*= 0.5
     return sinc_reduce(k,X...,C)
 end
 
@@ -483,13 +481,10 @@ function compressible_spectrum(k,psi::Psi{3})
 
     wx,wy,wz = helmholtz_compressible(wx,wy,wz,K...)
 
-    C = auto_correlate(wx,X,K)
-    wx = nothing; GC.gc()
-    @. C += $auto_correlate(wy,X,K)
-    wy = nothing; GC.gc()
-    @. C += $auto_correlate(wz,X,K)
-    wz = nothing; GC.gc()
-    @. C *= 0.5
+    C = auto_correlate(wx,X,K);     wx = nothing; GC.gc()
+    C .+= auto_correlate(wy,X,K);   wy = nothing; GC.gc()
+    C .+= auto_correlate(wz,X,K);   wz = nothing; GC.gc()
+    C .*= 0.5
     return sinc_reduce(k,X...,C)
 end
 
@@ -514,13 +509,10 @@ function qpressure_spectrum(k,psi::Psi{3})
     @unpack ψ,X,K = psi
     wx,wy,wz = gradient(Psi(abs.(ψ) |> complex,X,K ))
 
-    C = auto_correlate(wx,X,K)
-    wx = nothing; GC.gc()
-    @. C += $auto_correlate(wy,X,K)
-    wy = nothing; GC.gc()
-    @. C += $auto_correlate(wz,X,K)
-    wz = nothing; GC.gc()
-    @. C *= 0.5
+    C = auto_correlate(wx,X,K);  wx = nothing; GC.gc()
+    C .+= auto_correlate(wy,X,K);wy = nothing; GC.gc()
+    C .+= auto_correlate(wz,X,K);wz = nothing; GC.gc()
+    C .*= 0.5
     return sinc_reduce(k,X...,C)
 end
 
@@ -533,8 +525,7 @@ points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 function incompressible_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
     vx,vy = velocity(psi)
-    a = abs.(ψ)
-    ux = @. a*vx; uy = @. a*vy 
+    ux = @. abs(ψ)*vx; uy = @. abs(ψ)*vy 
     Wi, Wc = helmholtz(ux,uy,K...)
     wix,wiy = Wi
     U = @. exp(im*angle(ψ))
@@ -561,13 +552,10 @@ function incompressible_density(k,psi::Psi{3})
     @. wy *= exp(im*angle(ψ))
     @. wz *= exp(im*angle(ψ))
 
-	C = auto_correlate(wx,X,K)
-    wx = nothing; GC.gc()
-    @. C += $auto_correlate(wy,X,K)
-    wy = nothing; GC.gc()
-    @. C += $auto_correlate(wz,X,K)
-    wz = nothing; GC.gc()
-    @. C *= 0.5
+	C = auto_correlate(wx,X,K);   wx = nothing; GC.gc()
+    C .+= auto_correlate(wy,X,K); wy = nothing; GC.gc()
+    C .+= auto_correlate(wz,X,K); wz = nothing; GC.gc()
+    C .*= 0.5
     return sinc_reduce(k,X...,C)
 end
 
@@ -580,8 +568,7 @@ points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 function compressible_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
     vx,vy = velocity(psi)
-    a = abs.(ψ)
-    ux = @. a*vx; uy = @. a*vy 
+    ux = @. abs(ψ)*vx; uy = @. abs(ψ)*vy 
     Wi, Wc = helmholtz(ux,uy,K...)
     wcx,wcy = Wc
     U = @. exp(im*angle(ψ))
@@ -608,13 +595,10 @@ function compressible_density(k,psi::Psi{3})
     @. wy *= exp(im*angle(ψ))
     @. wz *= exp(im*angle(ψ))
 
-    C = auto_correlate(wx,X,K)
-    wx = nothing; GC.gc()
-    @. C += $auto_correlate(wy,X,K)
-    wy = nothing; GC.gc()
-    @. C += $auto_correlate(wz,X,K)
-    wz = nothing; GC.gc()
-    @. C *= 0.5
+    C = auto_correlate(wx,X,K); wx = nothing; GC.gc()
+    C .+= auto_correlate(wy,X,K); wy = nothing; GC.gc()
+    C .+= auto_correlate(wz,X,K); wz = nothing; GC.gc()
+    C .*= 0.5
     return sinc_reduce(k,X...,C)
 end
 
@@ -628,8 +612,10 @@ function qpressure_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi
     psia = Psi(abs.(ψ) |> complex,X,K )
     rnx,rny = gradient(psia)
+
+    # restore phase factors
     U = @. exp(im*angle(ψ))
-    @. rnx *= U # restore phase factors
+    @. rnx *= U 
     @. rny *= U 
 
 	cx = auto_correlate(rnx,X,K)
@@ -646,13 +632,10 @@ function qpressure_density(k,psi::Psi{3})
     @. wy *= exp(im*angle(ψ))
     @. wz *= exp(im*angle(ψ))
 
-	C = auto_correlate(wx,X,K)
-    wx = nothing; GC.gc()
-    @. C += $auto_correlate(wy,X,K)
-    wy = nothing; GC.gc()
-    @. C += $auto_correlate(wz,X,K)
-    wz = nothing; GC.gc()
-    @. C = 0.5
+	C = auto_correlate(wx,X,K); wx = nothing; GC.gc()
+    C .+= auto_correlate(wy,X,K); wy = nothing; GC.gc()
+    C .+= auto_correlate(wz,X,K); wz = nothing; GC.gc()
+    C .*= 0.5
     return sinc_reduce(k,X...,C)
 end
 
@@ -667,21 +650,22 @@ points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 function ic_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
     vx,vy = velocity(psi)
-    a = abs.(ψ)
-    ux = @. a*vx; uy = @. a*vy 
+    ux = @. abs(ψ)*vx; uy = @. abs(ψ)*vy 
     Wi, Wc = helmholtz(ux,uy,K...)
     wix,wiy = Wi; wcx,wcy = Wc
+
     U = @. exp(im*angle(ψ))
-    @. wix *= im*U # restore phase factors and make u -> w fields
+    @. wix *= im*U # restore phase factor, make u -> w fields
     @. wiy *= im*U
     @. wcx *= im*U 
     @. wcy *= im*U
 
-    cicx = convolve(wix,wcx,X,K) 
-    ccix = convolve(wcx,wix,X,K)
+    cicx = convolve(wix,wcx,X,K)
+    # ccix = convolve(wcx,wix,X,K)
     cicy = convolve(wiy,wcy,X,K) 
-    cciy = convolve(wcy,wiy,X,K)
-    C = @. 0.5*(cicx + ccix + cicy + cciy)  
+    # cciy = convolve(wcy,wiy,X,K)
+    # C = @. 0.5*(cicx + ccix + cicy + cciy)  
+    C = @. real(cicx + cicy)
     return bessel_reduce(k,X...,C)
 end
 
@@ -705,14 +689,14 @@ function ic_density(k,psi::Psi{3})
     @. wcy *= im*exp(im*angle(ψ))
     @. wcz *= im*exp(im*angle(ψ))
 
-    C = convolve(wix,wcx,X,K); GC.gc()
-    C .+= convolve(wcx,wix,X,K); wix = nothing; wcx = nothing; GC.gc() 
-    C .+= convolve(wiy,wcy,X,K); GC.gc()
+    # C = convolve(wix,wcx,X,K); GC.gc()
+    C = convolve(wcx,wix,X,K); wix = nothing; wcx = nothing; GC.gc() 
+    # C .+= convolve(wiy,wcy,X,K); GC.gc()
     C .+= convolve(wcy,wiy,X,K); wcy = nothing; wiy = nothing; GC.gc()
-    C .+= convolve(wiz,wcz,X,K); GC.gc() 
+    # C .+= convolve(wiz,wcz,X,K); GC.gc() 
     C .+= convolve(wcz,wiz,X,K); wcz = nothing; wiz = nothing; GC.gc()
-    @. C *= 0.5  
-    return sinc_reduce(k,X...,C)
+    # @. C *= 0.5  
+    return sinc_reduce(k,X...,real.(C))
 end
 
 """
@@ -724,12 +708,11 @@ points `k`. Arrays `X`, `K` should be computed using `xk_arrays`.
 function iq_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
     vx,vy = velocity(psi)
-    a = abs.(ψ)
-    ux = @. a*vx; uy = @. a*vy 
+    ux = @. abs(ψ)*vx; uy = @. abs(ψ)*vy 
     Wi, Wc = helmholtz(ux,uy,K...)
     wix,wiy = Wi 
 
-    psia = Psi(a |> complex,X,K )
+    psia = Psi(abs.(ψ) |> complex,X,K )
     wqx,wqy = gradient(psia)
 
     U = @. exp(im*angle(ψ))
@@ -739,10 +722,11 @@ function iq_density(k,psi::Psi{2})
     @. wqy *= U
 
     ciqx = convolve(wix,wqx,X,K) 
-    cqix = convolve(wqx,wix,X,K) 
+    # cqix = convolve(wqx,wix,X,K) 
     ciqy = convolve(wiy,wqy,X,K) 
-    cqiy = convolve(wqy,wiy,X,K) 
-    C = @. 0.5*(ciqx + cqix + ciqy + cqiy) 
+    # cqiy = convolve(wqy,wiy,X,K) 
+    # C = @. 0.5*(ciqx + cqix + ciqy + cqiy) 
+    C = @. real(ciqx + ciqy)
     return bessel_reduce(k,X...,C)
 end
 
@@ -765,14 +749,14 @@ function iq_density(k,psi::Psi{3})
     @. wy *= U
     @. wz *= U
 
-    C = convolve(wix,wx,X,K); GC.gc()
-    C .+= convolve(wx,wix,X,K); wix = nothing; wx = nothing; GC.gc() 
-    C .+= convolve(wiy,wy,X,K); GC.gc()
+    # C = convolve(wix,wx,X,K); GC.gc()
+    C = convolve(wx,wix,X,K); wix = nothing; wx = nothing; GC.gc() 
+    # C .+= convolve(wiy,wy,X,K); GC.gc()
     C .+= convolve(wy,wiy,X,K); wy = nothing; wiy = nothing; GC.gc()
-    C .+= convolve(wiz,wz,X,K); GC.gc() 
+    # C .+= convolve(wiz,wz,X,K); GC.gc() 
     C .+= convolve(wz,wiz,X,K); wz = nothing; wiz = nothing; GC.gc()
-    @. C *= 0.5  
-    return sinc_reduce(k,X...,C)
+    # @. C *= 0.5  
+    return sinc_reduce(k,X...,real.(C))
 end
 
 
@@ -785,8 +769,7 @@ points `k`. Arrays `X`, `K` should be computed using `makearrays`.
 function cq_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
     vx,vy = velocity(psi)
-    a = abs.(ψ)
-    ux = @. a*vx; uy = @. a*vy 
+    ux = @. abs(ψ)*vx; uy = @. abs(ψ)*vy 
     Wi, Wc = helmholtz(ux,uy,K...)
     wcx,wcy = Wc 
 
@@ -800,10 +783,11 @@ function cq_density(k,psi::Psi{2})
     @. wqy *= U
 
     ccqx = convolve(wcx,wqx,X,K) 
-    cqcx = convolve(wqx,wcx,X,K) 
+    # cqcx = convolve(wqx,wcx,X,K) 
     ccqy = convolve(wcy,wqy,X,K) 
-    cqcy = convolve(wqy,wcy,X,K) 
-    C = @. 0.5*(ccqx + cqcx + ccqy + cqcy) 
+    # cqcy = convolve(wqy,wcy,X,K) 
+    # C = @. 0.5*(ccqx + cqcx + ccqy + cqcy) 
+    C = @. real(ccqx + ccqy)
     return bessel_reduce(k,X...,C)
 end
 
@@ -827,14 +811,14 @@ function cq_density(k,psi::Psi{3})
     @. wy *= U
     @. wz *= U
 
-    C = convolve(wcx,wx,X,K); GC.gc()
-    C .+= convolve(wx,wcx,X,K); wcx = nothing; wx = nothing; GC.gc() 
-    C .+= convolve(wcy,wy,X,K); GC.gc()
+    # C = convolve(wcx,wx,X,K); GC.gc()
+    C = convolve(wx,wcx,X,K); wcx = nothing; wx = nothing; GC.gc() 
+    # C .+= convolve(wcy,wy,X,K); GC.gc()
     C .+= convolve(wy,wcy,X,K); wy = nothing; wcy = nothing; GC.gc()
-    C .+= convolve(wcz,wz,X,K); GC.gc() 
+    # C .+= convolve(wcz,wz,X,K); GC.gc() 
     C .+= convolve(wz,wcz,X,K); wz = nothing; wcz = nothing; GC.gc()
-    @. C *= 0.5  
-    return sinc_reduce(k,X...,C)
+    # @. C *= 0.5  
+    return sinc_reduce(k,X...,real.(C))
 end
 
 """

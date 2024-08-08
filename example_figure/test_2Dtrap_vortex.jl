@@ -23,7 +23,7 @@ N = 512
 g = 0.1
 w = 1
 
-## useful methods
+## useful methods for Thomas-Fermi state
 V(x,y) = 0.5*w^2*(x^2 + y^2)
 ψ0(x,y,μ,g) = sqrt(μ/g)*sqrt(max(1.0-V(x,y)/μ,0.0)+im*0.0)
 healinglength(x,y,μ,g) = 1/sqrt(g*abs2(ψ0(x,y,μ,g)))
@@ -34,6 +34,8 @@ x = LinRange(-L/2,L/2,N); y = x
 X = (x,y)
 n0 = abs2.(ψ0(0,0,μ,g))
 ek_unit = pi*n0*Rtf^3/(2μ)
+
+points_per_healing = ξ/(L/N)
 
 ## 
 ψ = ψ0.(x,y',μ,g)
@@ -59,7 +61,8 @@ kxi = 2*pi/ξ
 
 kmin = 0.1kR
 kmax = 1.2kxi  
-Np = 1000
+# Np = 1000
+Np = 200
 k = LinRange(kmin,kmax,Np)
 
 εki = incompressible_spectrum(k,Psi(psi.ψ,X,K))
@@ -151,6 +154,23 @@ icd = ic_density(k, Ψ)
 
 plot(k, [ikd,ckd,nkd,qkd,cqd,iqd,icd], label=[L"n^{i}" L"n^c" L"n^k" L"n^q" L"n^{cq}" L"n^{iq}" L"n^{ic}"], xlabel=L"k", ylabel=L"n(k)", title="U=0.2", legend=:topleft)
 
+plot(k*ξ, [nkd,ikd+ckd+qkd+cqd+iqd+icd], label=[L"n^k" "sum"], xlabel=L"k", ylabel=L"n(k)", title="U=0.2", legend=:topleft)
+xlims!(0,1)
+
+## again with noise 
+## test all densities add to total (new figure)
+# find source of UV error increase 
+# 0.1 looks good
+Ψ = Psi(psi.ψ+0.6*randn(ComplexF64,N,N),X,K)
+ikd = incompressible_density(k, Ψ)
+ckd = compressible_density(k, Ψ)
+qkd = qpressure_density(k, Ψ)
+nkd = kinetic_density(k, Ψ)
+cqd = cq_density(k, Ψ)
+iqd = iq_density(k, Ψ)
+icd = ic_density(k, Ψ)
+
+plot(k, [ikd,ckd,nkd,qkd,cqd,iqd,icd], label=[L"n^{i}" L"n^c" L"n^k" L"n^q" L"n^{cq}" L"n^{iq}" L"n^{ic}"], xlabel=L"k", ylabel=L"n(k)", title="U=0.2", legend=:topleft)
 
 plot(k*ξ, [nkd,ikd+ckd+qkd+cqd+iqd+icd], label=[L"n^k" "sum"], xlabel=L"k", ylabel=L"n(k)", title="U=0.2", legend=:topleft)
 xlims!(0,1)
