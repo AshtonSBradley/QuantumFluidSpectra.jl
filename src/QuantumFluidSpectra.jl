@@ -28,7 +28,7 @@ export log10range, convolve
 
 export xk_arrays, fft_differentials
 export gradient, velocity, current
-export energydecomp, helmholtz, kinetic_density
+export energydecomp, helmholtz, kinetic_density, kdensity
 export incompressible_spectrum, 
 compressible_spectrum, 
 qpressure_spectrum
