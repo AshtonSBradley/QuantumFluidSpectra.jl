@@ -101,8 +101,7 @@ end
 """
 	Wi,Wc = helmholtz(wx,...,kx,...)
 
-Computes a 2 or 3 dimensional Helmholtz decomposition of the vector field with components `wx`, `wy`, or `wx`, `wy`, `wz`. 
-`psi` is passed to provide requisite arrays in `k`-space.
+Computes a 2 or 3 dimensional Helmholtz decomposition of the vector field with components `wx`, `wy`, or `wx`, `wy`, `wz`. `psi` is passed to provide requisite arrays in `k`-space.
 Returned fields `Wi`, `Wc` are tuples of cartesian components of incompressible and compressible respectively.
 """
 function helmholtz(wx, wy, kx, ky)
@@ -172,35 +171,45 @@ function energydecomp(psi::Psi{3})
     return et, ei, ec
 end
 
-"""
-	zeropad(A)
+# """
+# 	zeropad(A)
 
-Zero-pad the array `A` to twice the size with the same element type as `A`.
+# Zero-pad the array `A` to twice the size with the same element type as `A`.
+# """
+# function zeropad(A)
+#     S = size(A)
+#     if any(isodd.(S))
+#         error("Array dims not divisible by 2")
+#     end
+#     nO = 2 .* S
+#     nI = S .÷ 2
+
+#     outer = []
+#     inner = []
+
+#     for no in nO
+#         push!(outer,(1:no))
+#     end
+
+#     for ni in nI
+#         push!(inner,(ni+1:ni+2*ni))
+#     end
+
+#     return PaddedView(zero(eltype(A)),A,Tuple(outer),Tuple(inner)) |> collect
+# end
+
+"""
+    zeropad(A)
+
+Zero-pad the array `A` to twice the size with the same element type as `A`, for fft convolution, correlations.
 """
 function zeropad(A)
-    S = size(A)
-    if any(isodd.(S))
-        error("Array dims not divisible by 2")
-    end
-    nO = 2 .* S
-    nI = S .÷ 2
-
-    outer = []
-    inner = []
-
-    for no in nO
-        push!(outer,(1:no))
-    end
-
-    for ni in nI
-        push!(inner,(ni+1:ni+2*ni))
-    end
-
-    return PaddedView(zero(eltype(A)),A,Tuple(outer),Tuple(inner)) |> collect
+    outer = 2 .* size(A)
+    return PaddedView(zero(eltype(A)),A,Tuple(outer)) |> collect
 end
 
 """
-	log10range(a,b,n)
+log10range(a,b,n)
 
 Create a vector that is linearly spaced in log space, containing `n` values bracketed by `a` and `b`.
 """
@@ -226,10 +235,11 @@ function convolve(ψ1,ψ2,X,K)
 	ϕ1 = zeropad(conj.(ψ1))
     ϕ2 = zeropad(ψ2)
 
-	χ1 = fft(ϕ1)*prod(DX)
-	χ2 = fft(ϕ2)*prod(DX)
-	return ifft(χ1.*χ2)*prod(DK)*(2*pi)^(n/2) |> fftshift
+	χ1 = fft(ϕ1)*prod(DX)  
+	χ2 = fft(ϕ2)*prod(DX) 
+	return ifft(χ1.*χ2)*prod(DK)*(2*pi)^(n/2)  
 end
+
 
 @doc raw"""
 	auto_correlate(ψ,X,K)
@@ -250,8 +260,8 @@ function auto_correlate(ψ,X,K)
     n = length(X)
     DX,DK = fft_differentials(X,K)
     ϕ = zeropad(ψ)
-	χ = fft(ϕ)*prod(DX)
-	return ifft(abs2.(χ))*prod(DK)*(2*pi)^(n/2) |> fftshift
+	χ = fft(ϕ)*prod(DX) 
+	return ifft(abs2.(χ))*prod(DK)*(2*pi)^(n/2) 
 end
 
 auto_correlate(psi::Psi{D}) where D = auto_correlate(psi.ψ,psi.X,psi.K)
@@ -276,9 +286,9 @@ function cross_correlate(ψ1,ψ2,X,K)
     DX,DK = fft_differentials(X,K)
     ϕ1 = zeropad(ψ1)
     ϕ2 = zeropad(ψ2)
-	χ1 = fft(ϕ1)*prod(DX)
-    χ2 = fft(ϕ2)*prod(DX)
-	return ifft(conj(χ1).*χ2)*prod(DK)*(2*pi)^(n/2) |> fftshift
+	χ1 = fft(ϕ1)*prod(DX)  
+    χ2 = fft(ϕ2)*prod(DX)  
+	return ifft(conj(χ1).*χ2)*prod(DK)*(2*pi)^(n/2)  
 end
 cross_correlate(psi1::Psi{D},psi2::Psi{D}) where D = cross_correlate(psi1.ψ,psi2.ψ,psi1.X,psi1.K)
 
@@ -287,8 +297,8 @@ function bessel_reduce(k,x,y,C)
     Nx,Ny = 2*length(x),2*length(y)
     Lx = x[end] - x[begin] + dx
     Ly = y[end] - y[begin] + dy
-    xp = LinRange(-Lx,Lx,Nx+1)[1:Nx]
-    yq = LinRange(-Ly,Ly,Ny+1)[1:Ny]
+    xp = LinRange(-Lx,Lx,Nx+1)[1:Nx] |> fftshift
+    yq = LinRange(-Ly,Ly,Ny+1)[1:Ny] |> fftshift
     E = zero(k)
     @tullio E[i] = real(besselj0(k[i]*hypot(xp[p],yq[q]))*C[p,q])
     @. E *= k*dx*dy/2/pi 
@@ -301,9 +311,9 @@ function sinc_reduce(k,x,y,z,C)
     Lx = x[end] - x[begin] + dx
     Ly = y[end] - y[begin] + dy
     Lz = z[end] - z[begin] + dz
-    xp = LinRange(-Lx,Lx,Nx+1)[1:Nx]
-    yq = LinRange(-Ly,Ly,Ny+1)[1:Ny]
-    zr = LinRange(-Lz,Lz,Nz+1)[1:Nz]
+    xp = LinRange(-Lx,Lx,Nx+1)[1:Nx] |> fftshift
+    yq = LinRange(-Ly,Ly,Ny+1)[1:Ny] |> fftshift 
+    zr = LinRange(-Lz,Lz,Nz+1)[1:Nz] |> fftshift
     E = zero(k)
     @tullio E[i] = real(π*sinc(k[i]*hypot(xp[p],yq[q],zr[r])/π)*C[p,q,r]) 
     @. E *= k^2*dx*dy*dz/2/pi^2  
