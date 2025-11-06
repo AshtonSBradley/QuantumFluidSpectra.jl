@@ -73,7 +73,7 @@ k = LinRange(kmin,kmax,Np)
 
 
 ## Fig 3 (a) ui power spectrum plot
-pgfplotsx()
+# pgfplotsx()
 ep3a = new_plot()
 
 # Analytic form homog. [PRX]
