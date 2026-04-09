@@ -80,3 +80,23 @@ function fft_differentials(X,K)
     DK = ntuple(i -> dfft(X[i],K[i])[2], length(X))
     return DX,DK
 end
+
+"""
+    radial_kgrid(kmax, n)
+
+Create a uniformly spaced radial wavenumber grid from `0` to `kmax` with `n` points.
+This is useful for angle-integrated spectra and especially for cumulative flux and
+conservation checks, where a dense independent radial grid can improve quadrature accuracy.
+"""
+radial_kgrid(kmax, n) = collect(LinRange(0, kmax, n))
+
+"""
+    radial_kgrid(psi::Psi, n=1000)
+
+Create a uniformly spaced radial wavenumber grid from `0` to the largest Cartesian
+wavenumber represented by `psi.K`, using `n` points.
+"""
+function radial_kgrid(psi::Field, n=1000)
+    kmax = maximum(map(k -> maximum(abs.(k)), psi.K))
+    return radial_kgrid(kmax, n)
+end

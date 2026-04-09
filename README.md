@@ -52,6 +52,19 @@ gi = gv(r,k,εki) # pass k vals on which εki is defined
 See the citation below for details. 
 </details>
 
+<details><summary><b>Radial k grids for transfer and flux</b></summary>
+
+Angle-integrated spectra in this package are evaluated on a user-chosen radial `k` grid, independent of the Cartesian FFT grid. For transfer or flux diagnostics, a dense uniform radial grid is often helpful:
+
+```julia
+k = radial_kgrid(psi, 4000)
+T = gpe_energy_transfer(k, psi; g=1.0)
+Π = gpe_energy_flux(k, psi; g=1.0)
+```
+
+This is especially useful for conservation checks, since the radial quadrature can be refined without changing the underlying field data.
+</details>
+
 ## Example: central vortex in a 2D Bose-Einstein condensate
 For creation script, see `/example_figure/test_2Dtrap_vortex.jl`.
 

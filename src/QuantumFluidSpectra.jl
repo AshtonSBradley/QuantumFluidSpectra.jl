@@ -26,7 +26,7 @@ end
 include("arrays.jl")
 include("analysis.jl")
 
-export Psi, xvec, kvec, xvecs, kvecs
+export Psi, xvec, kvec, xvecs, kvecs, radial_kgrid
 export auto_correlate, cross_correlate
 export bessel_reduce, sinc_reduce, gv, gv3
 export log10range, convolve
@@ -42,5 +42,6 @@ compressible_density,
 qpressure_density
 export ic_density, iq_density, cq_density
 export density_spectrum, trap_spectrum
+export gpe_energy_transfer, gpe_energy_flux
 
 end

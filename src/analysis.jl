@@ -820,3 +820,146 @@ function density_spectrum(k,psi::Psi{3})
 
     return sinc_reduce(k,X...,C)
 end
+
+function _k2_grid(K::NTuple{2})
+    kx,ky = K
+    return @. kx^2 + ky'^2
+end
+
+function _k2_grid(K::NTuple{3})
+    kx,ky,kz = K
+    kzr = reshape(kz,1,1,length(kz))
+    return @. kx^2 + ky'^2 + kzr^2
+end
+
+function _laplacian(psi::Psi{2})
+    @unpack ψ,K = psi
+    ϕ = fft(ψ)
+    return ifft(-_k2_grid(K) .* ϕ)
+end
+
+function _laplacian(psi::Psi{3})
+    @unpack ψ,K = psi
+    ϕ = fft(ψ)
+    return ifft(-_k2_grid(K) .* ϕ)
+end
+
+function _trap_field(psi::Psi{2},V,t)
+    @unpack ψ,X = psi; x,y = X
+    return @. V(x,y',t) * ψ
+end
+
+function _trap_field(psi::Psi{3},V,t)
+    @unpack ψ,X = psi; x,y,z = X
+    zr = reshape(z,1,1,length(z))
+    return @. V(x,y',zr,t) * ψ
+end
+
+function _gpe_rhs(psi::Psi{2}; g=1.0, V=nothing, t=0.0)
+    @unpack ψ = psi
+    lap = _laplacian(psi)
+    rhs = @. -im * (-0.5 * lap + g * abs2(ψ) * ψ)
+    if !isnothing(V)
+        trap = _trap_field(psi,V,t)
+        rhs .+= (-im) .* trap
+    end
+    return rhs
+end
+
+function _gpe_rhs(psi::Psi{3}; g=1.0, V=nothing, t=0.0)
+    @unpack ψ = psi
+    lap = _laplacian(psi)
+    rhs = @. -im * (-0.5 * lap + g * abs2(ψ) * ψ)
+    if !isnothing(V)
+        trap = _trap_field(psi,V,t)
+        rhs .+= (-im) .* trap
+    end
+    return rhs
+end
+
+function _gpe_reduce(k,X,C)
+    if length(X) == 2
+        return bessel_reduce(k,X...,C)
+    else
+        return sinc_reduce(k,X...,C)
+    end
+end
+
+function _cumulative_integral(k,f)
+    T = promote_type(eltype(k), eltype(f), Float64)
+    I = zeros(T, length(k))
+    for i in 2:length(k)
+        dk = k[i] - k[i-1]
+        I[i] = I[i-1] + 0.5 * dk * (f[i] + f[i-1])
+    end
+    return I
+end
+
+function _gpe_kinetic_transfer(k,psi::Psi{2},rhs)
+    @unpack X,K = psi
+    ψx,ψy = gradient(psi)
+    rhspsi = Psi(rhs,X,K)
+    rhsx,rhsy = gradient(rhspsi)
+
+    cx = cross_correlate(ψx,rhsx,X,K)
+    cy = cross_correlate(ψy,rhsy,X,K)
+    C = @. 0.5 * (cx + cy)
+    return 2 .* real.(_gpe_reduce(k,X,C))
+end
+
+function _gpe_kinetic_transfer(k,psi::Psi{3},rhs)
+    @unpack X,K = psi
+    ψx,ψy,ψz = gradient(psi)
+    rhspsi = Psi(rhs,X,K)
+    rhsx,rhsy,rhsz = gradient(rhspsi)
+
+    cx = cross_correlate(ψx,rhsx,X,K)
+    cy = cross_correlate(ψy,rhsy,X,K)
+    cz = cross_correlate(ψz,rhsz,X,K)
+    C = @. 0.5 * (cx + cy + cz)
+    return 2 .* real.(_gpe_reduce(k,X,C))
+end
+
+function _gpe_interaction_transfer(k,psi::Psi,rhs; g=1.0)
+    @unpack ψ,X,K = psi
+    χ = @. g * abs2(ψ) * ψ
+    C = cross_correlate(χ,rhs,X,K)
+    return 2 .* real.(_gpe_reduce(k,X,C))
+end
+
+function _gpe_trap_transfer(k,psi::Psi,rhs; V=nothing, t=0.0)
+    isnothing(V) && return zeros(promote_type(eltype(k), Float64), length(k))
+    @unpack X,K = psi
+    η = _trap_field(psi,V,t)
+    C = cross_correlate(η,rhs,X,K)
+    return 2 .* real.(_gpe_reduce(k,X,C))
+end
+
+"""
+    gpe_energy_transfer(k, psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
+
+Return the angle-integrated full GPE energy transfer spectrum on radial wavenumbers `k`.
+
+If `components=true`, also return the kinetic, interaction, and trap contributions.
+"""
+function gpe_energy_transfer(k,psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
+    rhs = _gpe_rhs(psi; g=g, V=V, t=t)
+    Tkin = _gpe_kinetic_transfer(k,psi,rhs)
+    Tint = _gpe_interaction_transfer(k,psi,rhs; g=g)
+    Ttrap = _gpe_trap_transfer(k,psi,rhs; V=V, t=t)
+    T = Tkin .+ Tint .+ Ttrap
+    return components ? (T,Tkin,Tint,Ttrap) : T
+end
+
+"""
+    gpe_energy_flux(k, psi::Psi; g=1.0, V=nothing, t=0.0)
+
+Return the cumulative full GPE energy flux `Π(k) = -∫₀ᵏ T(q)dq`.
+
+For conservation-quality diagnostics, use a dense independent radial grid such as
+`radial_kgrid(psi, 4000)` rather than reusing a sparse plotting grid.
+"""
+function gpe_energy_flux(k,psi::Psi; g=1.0, V=nothing, t=0.0)
+    T = gpe_energy_transfer(k,psi; g=g, V=V, t=t)
+    return -_cumulative_integral(k,T)
+end

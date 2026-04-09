@@ -1,6 +1,15 @@
 using QuantumFluidSpectra
 using Test
 
+function trapz(x, y)
+    T = promote_type(eltype(x), eltype(y), Float64)
+    s = zero(T)
+    for i in 2:length(x)
+        s += 0.5 * (x[i] - x[i-1]) * (y[i] + y[i-1])
+    end
+    return s
+end
+
 @testset "2D Analysis" begin 
     # Velocity and Helmholtz tests
     n = 256
@@ -60,6 +69,49 @@ using Test
     wa = wave_action(kx,psi)
     @test wa[1] == 0
     @test all(isfinite, wa)
+    @test radial_kgrid(psi, 32) == collect(LinRange(0.0, maximum(abs.(kx)), 32))
+
+    ## GPE energy transfer vanishes for a plane wave and components add up
+    kr = LinRange(0.0, maximum(abs.(kx)), 64)
+    T,Tkin,Tint,Ttrap = gpe_energy_transfer(kr, psi; g=1.0, components=true)
+    Π = gpe_energy_flux(kr, psi; g=1.0)
+    @test maximum(abs.(T)) < 1e-8
+    @test maximum(abs.(Π)) < 1e-8
+    @test T ≈ Tkin .+ Tint .+ Ttrap
+    @test all(iszero, Ttrap)
+
+    ## Trap contribution is finite and bookkeeping stays consistent
+    V2(x,y,t) = 0.5 .* (x.^2 .+ y.^2)
+    ψg = @. exp(-(X[1]^2 + X[2]'^2))
+    psig = Psi(complex.(ψg), X, K)
+    Tg,Tkg,Tig,Ttg = gpe_energy_transfer(kr, psig; g=1.0, V=V2, components=true)
+    Πg = gpe_energy_flux(kr, psig; g=1.0, V=V2)
+    @test Tg ≈ Tkg .+ Tig .+ Ttg
+    @test all(isfinite, Tg)
+    @test all(isfinite, Πg)
+    @test maximum(abs.(Ttg)) > 0
+
+    ## Dense independent radial grids support accurate conservation checks
+    nsmall = 128
+    Xs,Ks,_,_ = xk_arrays(L,(nsmall,nsmall))
+    xs,ys = Xs
+    yrs = reshape(ys, 1, :)
+    ψnl = @. (1 + 0.15*cos(2π*xs) + 0.1*sin(4π*yrs)) * exp(im*(2π*xs + 4π*yrs))
+    psinl = Psi(complex.(ψnl), Xs, Ks)
+    kcoarse = collect(LinRange(0.0, maximum(abs.(Ks[1])), 1000))
+    kfine = collect(LinRange(0.0, maximum(abs.(Ks[1])), 4000))
+    Tcoarse = gpe_energy_transfer(kcoarse, psinl; g=1.0)
+    Tfine = gpe_energy_transfer(kfine, psinl; g=1.0)
+    Πcoarse = gpe_energy_flux(kcoarse, psinl; g=1.0)
+    Πfine = gpe_energy_flux(kfine, psinl; g=1.0)
+    ecoarse = abs(trapz(kcoarse, Tcoarse))
+    efine = abs(trapz(kfine, Tfine))
+    @test efine <= ecoarse + 1e-9
+    @test abs(Πfine[end]) <= abs(Πcoarse[end]) + 1e-9
+    @test Πcoarse[end] ≈ -trapz(kcoarse, Tcoarse)
+    @test Πfine[end] ≈ -trapz(kfine, Tfine)
+    @test efine < 5e-2
+    @test abs(Πfine[end]) < 5e-2
 
     ## Psi accepts generic complex arrays, including views
     ψ32 = ComplexF32.(ψ)
@@ -136,4 +188,44 @@ end
     @test all(isfinite, εi)
     @test wa[1] == 0
     @test all(isfinite, wa)
+    @test radial_kgrid(psi, 24) == collect(LinRange(0.0, maximum(abs.(kx)), 24))
+
+    ## GPE energy transfer vanishes for a plane wave and components add up
+    kr = LinRange(0.0, maximum(abs.(kx)), 48)
+    T,Tkin,Tint,Ttrap = gpe_energy_transfer(kr, psi; g=1.0, components=true)
+    Π = gpe_energy_flux(kr, psi; g=1.0)
+    @test maximum(abs.(T)) < 1e-8
+    @test maximum(abs.(Π)) < 1e-8
+    @test T ≈ Tkin .+ Tint .+ Ttrap
+    @test all(iszero, Ttrap)
+
+    ## Trap contribution is finite and bookkeeping stays consistent
+    z3 = reshape(X[3], (1,1,n))
+    ψg = @. exp(-(X[1]^2 + X[2]'^2 + z3^2))
+    psig = Psi(complex.(ψg), X, K)
+    V3(x,y,z,t) = 0.5 .* (x.^2 .+ y.^2 .+ z.^2)
+    Tg,Tkg,Tig,Ttg = gpe_energy_transfer(kr, psig; g=1.0, V=V3, components=true)
+    Πg = gpe_energy_flux(kr, psig; g=1.0, V=V3)
+    @test Tg ≈ Tkg .+ Tig .+ Ttg
+    @test all(isfinite, Tg)
+    @test all(isfinite, Πg)
+    @test maximum(abs.(Ttg)) > 0
+
+    ## Conservation improves with independent radial-grid refinement
+    z3 = reshape(X[3], (1,1,n))
+    ψnl = @. (1 + 0.1*cos(2π*X[1]) + 0.08*sin(2π*X[2]') + 0.06*cos(2π*z3)) *
+        exp(im*(2π*X[1] + 2π*X[2]' + 2π*z3))
+    psinl = Psi(complex.(ψnl), X, K)
+    kcoarse = vcat(LinRange(0.0, 6.0, 64), LinRange(6.3, maximum(abs.(kx)), 48))
+    kfine = vcat(LinRange(0.0, 6.0, 160), LinRange(6.1, maximum(abs.(kx)), 140))
+    Tcoarse = gpe_energy_transfer(kcoarse, psinl; g=1.0)
+    Tfine = gpe_energy_transfer(kfine, psinl; g=1.0)
+    Πcoarse = gpe_energy_flux(kcoarse, psinl; g=1.0)
+    Πfine = gpe_energy_flux(kfine, psinl; g=1.0)
+    ecoarse = abs(trapz(kcoarse, Tcoarse))
+    efine = abs(trapz(kfine, Tfine))
+    @test efine <= ecoarse + 1e-9
+    @test abs(Πfine[end]) <= abs(Πcoarse[end]) + 1e-9
+    @test Πcoarse[end] ≈ -trapz(kcoarse, Tcoarse)
+    @test Πfine[end] ≈ -trapz(kfine, Tfine)
 end
