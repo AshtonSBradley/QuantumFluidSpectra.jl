@@ -19,12 +19,7 @@ kvec(L,N) = fftfreq(N)*N*2*π/L |> Vector
 Create a tuple containing the spatial coordinate array for each spatial dimension.
 """
 function xvecs(L,N)
-    X = []
-    for (λ,ν) in zip(L,N)
-        x = xvec(λ,ν)
-        push!(X,x)
-    end
-    return X |> Tuple
+    return ntuple(i -> xvec(L[i],N[i]), length(L))
 end
 
 """
@@ -33,12 +28,7 @@ end
 Create a tuple containing the spatial coordinate array for each spatial dimension.
 """
 function kvecs(L,N)
-    K = []
-    for (λ,ν) in zip(L,N)
-        k = kvec(λ,ν)
-        push!(K,k)
-    end
-    return K |> Tuple
+    return ntuple(i -> kvec(L[i],N[i]), length(L))
 end
 
 """
@@ -61,15 +51,8 @@ function xk_arrays(L,N)
     @assert length(L) == length(N)
     X = xvecs(L,N)
     K = kvecs(L,N)
-    dX = Float64[]; dK = Float64[]
-    for j ∈ eachindex(X)
-        x = X[j]; k = K[j]
-        dx = x[2]-x[1]; dk = k[2]-k[1]
-        push!(dX,dx)
-        push!(dK,dk)
-    end
-    dX = dX |> Tuple
-    dK = dK |> Tuple
+    dX = ntuple(j -> X[j][2] - X[j][1], length(X))
+    dK = ntuple(j -> K[j][2] - K[j][1], length(K))
     return X,K,dX,dK
 end
 
@@ -93,10 +76,7 @@ Evalutes tuple of measures that make `fft`, `ifft` 2-norm preserving for each
 `x` or `k` dimension.
 """
 function fft_differentials(X,K)
-    M = length(X)
-    DX = zeros(M); DK = zeros(M)
-    for i ∈ eachindex(X)
-        DX[i],DK[i] = dfft(X[i],K[i])
-    end
+    DX = ntuple(i -> dfft(X[i],K[i])[1], length(X))
+    DK = ntuple(i -> dfft(X[i],K[i])[2], length(X))
     return DX,DK
 end

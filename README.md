@@ -45,7 +45,7 @@ k = LinRange(0.05,10,300) # can be anything
 ```
     
 The (angle-averaged) two-point correlator of the incompressible velocity field may then be calculated by 
-```
+```julia
 r = LinRange(0,10,300) # can be anything
 gi = gv(r,k,εki) # pass k vals on which εki is defined
 ```
@@ -55,9 +55,9 @@ See the citation below for details.
 ## Example: central vortex in a 2D Bose-Einstein condensate
 For creation script, see `/example_figure/test_2Dtrap_vortex.jl`.
 
-<img src="/example_figure/central_vortex.png" width="600">
+<img src="example_figure/central_vortex.png" width="600">
 
-to reproduce Figure 3(a) of [https://arxiv.org/abs/2112.04012](https://arxiv.org/abs/2112.04012}).
+to reproduce Figure 3(a) of [https://arxiv.org/abs/2112.04012](https://arxiv.org/abs/2112.04012).
 
 # Citation
 If you use `QuantumFluidSpectra.jl` please cite the paper

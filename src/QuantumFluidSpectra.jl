@@ -1,7 +1,6 @@
 module QuantumFluidSpectra
 
 using Tullio
-using Hwloc
 using FFTW
 using SpecialFunctions
 using PaddedViews
@@ -12,23 +11,29 @@ using UnPack
 export hypot 
 
 abstract type Field end
-struct Psi{D} <: Field
-    ψ::Array{Complex{Float64},D}
-    X::NTuple{D}
-    K::NTuple{D}
+struct Psi{
+    D,
+    T<:Complex,
+    AT<:AbstractArray{T,D},
+    XT<:NTuple{D,<:AbstractVector},
+    KT<:NTuple{D,<:AbstractVector},
+} <: Field
+    ψ::AT
+    X::XT
+    K::KT
 end
 
 include("arrays.jl")
 include("analysis.jl")
 
-export Psi, xvecs, kvecs
+export Psi, xvec, kvec, xvecs, kvecs
 export auto_correlate, cross_correlate
 export bessel_reduce, sinc_reduce, gv, gv3
 export log10range, convolve
 
 export xk_arrays, fft_differentials
 export gradient, velocity, current
-export energydecomp, helmholtz, kinetic_density, kdensity
+export energydecomp, helmholtz, kinetic_density, kdensity, wave_action
 export incompressible_spectrum, 
 compressible_spectrum, 
 qpressure_spectrum

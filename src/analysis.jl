@@ -65,11 +65,24 @@ end
 Compute the `D` velocity components of an `Psi` of spatial dimension `D`.
 The `D` velocities returned are `D`-dimensional arrays.
 """
+_safe_rho_threshold(rho) = eps(float(real(one(eltype(rho)))))
+
+function _safe_velocity(numerator, rho, offset)
+    threshold = _safe_rho_threshold(rho)
+    return @. ifelse(rho > threshold, numerator/rho + offset, offset)
+end
+
+function _safe_radial_divide(spectrum, k, power)
+    threshold = eps(float(real(one(eltype(k)))))
+    return @. ifelse(abs(k) > threshold, spectrum / (k^power), zero(spectrum))
+end
+
 function velocity(psi::Psi{1})
 	@unpack ψ = psi
     ψx = gradient(psi)
-	vx = @. imag(conj(ψ)*ψx)/abs2(ψ)
-    @. vx[isnan(vx)] = zero(vx[1])
+    rho = abs2.(ψ)
+    numer = @. imag(conj(ψ)*ψx)
+	vx = _safe_velocity(numer, rho, zero(eltype(rho)))
 	return vx
 end
 
@@ -78,10 +91,10 @@ function velocity(psi::Psi{2},Ω = 0)
     x,y = X
     ψx,ψy = gradient(psi)
     rho = abs2.(ψ)
-	vx = @. imag(conj(ψ)*ψx)/rho + Ω*y'  
-	vy = @. imag(conj(ψ)*ψy)/rho - Ω*x 
-    @. vx[isnan(vx)] = zero(vx[1])
-    @. vy[isnan(vy)] = zero(vy[1])
+    numerx = @. imag(conj(ψ)*ψx)
+    numery = @. imag(conj(ψ)*ψy)
+	vx = _safe_velocity(numerx, rho, Ω*y')
+	vy = _safe_velocity(numery, rho, -Ω*x)
 	return vx,vy
 end
 
@@ -89,12 +102,12 @@ function velocity(psi::Psi{3})
 	@unpack ψ = psi
 	rho = abs2.(ψ)
     ψx,ψy,ψz = gradient(psi)
-	vx = @. imag(conj(ψ)*ψx)/rho
-	vy = @. imag(conj(ψ)*ψy)/rho
-	vz = @. imag(conj(ψ)*ψz)/rho
-    @. vx[isnan(vx)] = zero(vx[1])
-    @. vy[isnan(vy)] = zero(vy[1])
-    @. vz[isnan(vz)] = zero(vz[1])
+    numerx = @. imag(conj(ψ)*ψx)
+    numery = @. imag(conj(ψ)*ψy)
+    numerz = @. imag(conj(ψ)*ψz)
+	vx = _safe_velocity(numerx, rho, zero(eltype(rho)))
+	vy = _safe_velocity(numery, rho, zero(eltype(rho)))
+	vz = _safe_velocity(numerz, rho, zero(eltype(rho)))
 	return vx,vy,vz
 end
 
@@ -185,18 +198,10 @@ function zeropad(A)
     nO = 2 .* S
     nI = S .÷ 2
 
-    outer = []
-    inner = []
+    outer = ntuple(i -> 1:nO[i], length(S))
+    inner = ntuple(i -> (nI[i] + 1):(nI[i] + 2*nI[i]), length(S))
 
-    for no in nO
-        push!(outer,(1:no))
-    end
-
-    for ni in nI
-        push!(inner,(ni+1:ni+2*ni))
-    end
-
-    return PaddedView(zero(eltype(A)),A,Tuple(outer),Tuple(inner)) |> collect
+    return PaddedView(zero(eltype(A)),A,outer,inner) |> collect
 end
 
 """
@@ -314,7 +319,7 @@ end
 	kinetic_density(k,ψ,X,K)
 
 Calculates the kinetic enery spectrum for wavefunction ``\\psi``, at the
-points `k`. Arrays `X`, `K` should be computed using `makearrays`.
+points `k`. Arrays `X`, `K` should be computed using `xk_arrays`.
 """
 function kinetic_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi; 
@@ -339,7 +344,7 @@ end
 	kdensity(k,ψ,X,K)
 
 Calculates the angle integrated momentum density ``|\\phi(k)|^2``, at the
-points `k`, with the usual radial weight in `k` space ensuring normalization under ∫dk. Units will be population per wavenumber. Arrays `X`, `K` should be computed using `makearrays`.
+points `k`, with the usual radial weight in `k` space ensuring normalization under ∫dk. Units will be population per wavenumber. Arrays `X`, `K` should be computed using `xk_arrays`.
 """
 function kdensity(k,psi::Psi{2})  
     @unpack ψ,X,K = psi; 
@@ -357,16 +362,16 @@ end
 	wave_action(k,ψ,X,K)
 
 Calculates the angle integrated wave-action spectrum ``|\\phi(\\mathbf{k})|^2``, at the
-points `k`, without the radial weight in `k` space ensuring normalization under ∫dk. Units will be population per wavenumber cubed. Isotropy is not assumed. Arrays `X`, `K` should be computed using `makearrays`.
+points `k`, without the radial weight in `k` space ensuring normalization under ∫dk. Units will be population per wavenumber cubed. Isotropy is not assumed. Arrays `X`, `K` should be computed using `xk_arrays`.
 """
-wave_action(k,psi::Psi{2}) = kdensity(k,psi::Psi{2}) ./k 
-wave_action(k,psi::Psi{3}) = kdensity(k,psi::Psi{3})./k^2
+wave_action(k,psi::Psi{2}) = _safe_radial_divide(kdensity(k,psi::Psi{2}), k, 1)
+wave_action(k,psi::Psi{3}) = _safe_radial_divide(kdensity(k,psi::Psi{3}), k, 2)
 
 """
 	incompressible_spectrum(k,ψ)
 
 Caculate the incompressible velocity correlation spectrum for wavefunction ``\\psi``, via Helmholtz decomposition.
-Input arrays `X`, `K` must be computed using `makearrays`.
+Input arrays `X`, `K` must be computed using `xk_arrays`.
 """
 function incompressible_spectrum(k,psi::Psi{2},Ω=0.0)
     @unpack ψ,X,K = psi;  
@@ -401,7 +406,7 @@ end
 	compressible_spectrum(k,ψ,X,K)
 
 Caculate the compressible kinetic enery spectrum for wavefunction ``\\psi``, via Helmholtz decomposition.
-Input arrays `X`, `K` must be computed using `makearrays`.
+Input arrays `X`, `K` must be computed using `xk_arrays`.
 """
 function compressible_spectrum(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
@@ -436,7 +441,7 @@ end
 	qpressure_spectrum(k,psi::Psi{D})
 
 Caculate the quantum pressure correlation spectrum for wavefunction ``\\psi``.
-Input arrays `X`, `K` must be computed using `makearrays`.
+Input arrays `X`, `K` must be computed using `xk_arrays`.
 """
 function qpressure_spectrum(k,psi::Psi{2})
     @unpack ψ,X,K = psi
@@ -465,7 +470,7 @@ end
     incompressible_density(k,ψ,X,K)
 
 Calculates the kinetic energy density of the incompressible velocity field in the wavefunction ``\\psi``, at the
-points `k`. Arrays `X`, `K` should be computed using `makearrays`.
+points `k`. Arrays `X`, `K` should be computed using `xk_arrays`.
 """
 function incompressible_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
@@ -507,7 +512,7 @@ end
     compressible_density(k,ψ,X,K)
 
 Calculates the kinetic energy density of the compressible velocity field in the wavefunction ``\\psi``, at the
-points `k`. Arrays `X`, `K` should be computed using `makearrays`.
+points `k`. Arrays `X`, `K` should be computed using `xk_arrays`.
 """
 function compressible_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
@@ -549,7 +554,7 @@ end
     qpressure_density(k,ψ,X,K)
 
 Energy density of the quantum pressure in the wavefunction ``\\psi``, at the
-points `k`. Arrays `X`, `K` should be computed using `makearrays`.
+points `k`. Arrays `X`, `K` should be computed using `xk_arrays`.
 """
 function qpressure_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi
@@ -587,7 +592,7 @@ end
     ic_density(k,ψ,X,K)
 
 Energy density of the incompressible-compressible interaction in the wavefunction ``\\psi``, at the
-points `k`. Arrays `X`, `K` should be computed using `makearrays`.
+points `k`. Arrays `X`, `K` should be computed using `xk_arrays`.
 """
 function ic_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
@@ -700,7 +705,7 @@ end
     cq_density(k,ψ,X,K)
 
 Energy density of the compressible-quantum pressure interaction in the wavefunction ``\\psi``, at the
-points `k`. Arrays `X`, `K` should be computed using `makearrays`.
+points `k`. Arrays `X`, `K` should be computed using `xk_arrays`.
 """
 function cq_density(k,psi::Psi{2})
     @unpack ψ,X,K = psi 
