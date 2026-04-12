@@ -300,6 +300,29 @@ function bessel_reduce(k,x,y,C)
     return E 
 end
 
+function _integrated_bessel_reduce(k, x, y, C)
+    dx,dy = x[2]-x[1],y[2]-y[1]
+    Nx,Ny = 2*length(x),2*length(y)
+    Lx = x[end] - x[begin] + dx
+    Ly = y[end] - y[begin] + dy
+    xp = LinRange(-Lx,Lx,Nx+1)[1:Nx]
+    yq = LinRange(-Ly,Ly,Ny+1)[1:Ny]
+
+    out = similar(k, eltype(real(C)))
+
+    @tullio out[i] = begin
+        ρ = hypot(xp[p], yq[q])
+        if ρ > 1e-12
+            real(k[i] * besselj1(k[i] * ρ) / ρ * C[p,q])
+        else
+            real(0.5 * k[i]^2 * C[p,q])
+        end
+    end
+
+    @. out *= dx * dy
+    return out
+end
+
 function sinc_reduce(k,x,y,z,C)
     dx,dy,dz = x[2]-x[1],y[2]-y[1],z[2]-z[1]
     Nx,Ny,Nz = 2*length(x),2*length(y),2*length(z)
@@ -313,6 +336,32 @@ function sinc_reduce(k,x,y,z,C)
     @tullio E[i] = real(π*sinc(k[i]*hypot(xp[p],yq[q],zr[r])/π)*C[p,q,r]) 
     @. E *= k^2*dx*dy*dz/2/pi^2  
     return E 
+end
+
+function _integrated_sinc_reduce(k, x, y, z, C)
+    dx,dy,dz = x[2]-x[1],y[2]-y[1],z[2]-z[1]
+    Nx,Ny,Nz = 2*length(x),2*length(y),2*length(z)
+    Lx = x[end] - x[begin] + dx
+    Ly = y[end] - y[begin] + dy
+    Lz = z[end] - z[begin] + dz
+    xp = LinRange(-Lx,Lx,Nx+1)[1:Nx]
+    yq = LinRange(-Ly,Ly,Ny+1)[1:Ny]
+    zr = LinRange(-Lz,Lz,Nz+1)[1:Nz]
+
+    out = similar(k, eltype(real(C)))
+
+    @tullio out[i] = begin
+        r = hypot(xp[p], yq[q], zr[r_])
+        if r > 1e-12
+            kr = k[i] * r
+            real((sin(kr) - kr * cos(kr)) / r^3 * C[p,q,r_])
+        else
+            real((k[i]^3) / 3 * C[p,q,r_])
+        end
+    end
+
+    @. out *= dx * dy * dz
+    return out
 end
 
 """
@@ -885,6 +934,20 @@ function _gpe_reduce(k,X,C)
     end
 end
 
+_integrated_gpe_reduce(k, X::Tuple{<:AbstractVector,<:AbstractVector}, C) =
+    _integrated_bessel_reduce(k, X[1], X[2], C)
+
+_integrated_gpe_reduce(k, X::Tuple{<:AbstractVector,<:AbstractVector,<:AbstractVector}, C) =
+    _integrated_sinc_reduce(k, X[1], X[2], X[3], C)
+
+_shell_area(::Psi{2}) = 2π
+_shell_area(::Psi{3}) = 4π
+
+_integrated_gpe_prefactor(::Psi{2}) = 1 / π
+_integrated_gpe_prefactor(::Psi{3}) = 1 / π^2
+
+_gradient_fields(psi::Psi) = gradient(psi)
+
 function _cumulative_integral(k,f)
     T = promote_type(eltype(k), eltype(f), Float64)
     I = zeros(T, length(k))
@@ -895,7 +958,7 @@ function _cumulative_integral(k,f)
     return I
 end
 
-function _gpe_kinetic_transfer(k,psi::Psi{2},rhs)
+function _gpe_kinetic_correlation(psi::Psi{2},rhs)
     @unpack X,K = psi
     ψx,ψy = gradient(psi)
     rhspsi = Psi(rhs,X,K)
@@ -903,11 +966,10 @@ function _gpe_kinetic_transfer(k,psi::Psi{2},rhs)
 
     cx = cross_correlate(ψx,rhsx,X,K)
     cy = cross_correlate(ψy,rhsy,X,K)
-    C = @. 0.5 * (cx + cy)
-    return 2 .* real.(_gpe_reduce(k,X,C))
+    return @. 0.5 * (cx + cy)
 end
 
-function _gpe_kinetic_transfer(k,psi::Psi{3},rhs)
+function _gpe_kinetic_correlation(psi::Psi{3},rhs)
     @unpack X,K = psi
     ψx,ψy,ψz = gradient(psi)
     rhspsi = Psi(rhs,X,K)
@@ -916,23 +978,52 @@ function _gpe_kinetic_transfer(k,psi::Psi{3},rhs)
     cx = cross_correlate(ψx,rhsx,X,K)
     cy = cross_correlate(ψy,rhsy,X,K)
     cz = cross_correlate(ψz,rhsz,X,K)
-    C = @. 0.5 * (cx + cy + cz)
-    return 2 .* real.(_gpe_reduce(k,X,C))
+    return @. 0.5 * (cx + cy + cz)
+end
+
+function _gpe_interaction_correlation(psi::Psi,rhs; g=1.0)
+    @unpack ψ,X,K = psi
+    χ = @. g * abs2(ψ) * ψ
+    return cross_correlate(χ,rhs,X,K)
+end
+
+function _gpe_trap_correlation(psi::Psi; V=nothing, t=0.0, rhs)
+    isnothing(V) && return nothing
+    @unpack X,K = psi
+    η = _trap_field(psi,V,t)
+    return cross_correlate(η,rhs,X,K)
+end
+
+function _gpe_kinetic_transfer(k,psi::Psi,rhs)
+    C = _gpe_kinetic_correlation(psi,rhs)
+    return 2 .* real.(_gpe_reduce(k,psi.X,C))
 end
 
 function _gpe_interaction_transfer(k,psi::Psi,rhs; g=1.0)
-    @unpack ψ,X,K = psi
-    χ = @. g * abs2(ψ) * ψ
-    C = cross_correlate(χ,rhs,X,K)
-    return 2 .* real.(_gpe_reduce(k,X,C))
+    C = _gpe_interaction_correlation(psi,rhs; g=g)
+    return 2 .* real.(_gpe_reduce(k,psi.X,C))
 end
 
 function _gpe_trap_transfer(k,psi::Psi,rhs; V=nothing, t=0.0)
-    isnothing(V) && return zeros(promote_type(eltype(k), Float64), length(k))
-    @unpack X,K = psi
-    η = _trap_field(psi,V,t)
-    C = cross_correlate(η,rhs,X,K)
-    return 2 .* real.(_gpe_reduce(k,X,C))
+    C = _gpe_trap_correlation(psi; V=V, t=t, rhs=rhs)
+    isnothing(C) && return zeros(promote_type(eltype(k), Float64), length(k))
+    return 2 .* real.(_gpe_reduce(k,psi.X,C))
+end
+
+function _gpe_kinetic_flux(k, psi::Psi, rhs)
+    C = _gpe_kinetic_correlation(psi, rhs)
+    return .-_integrated_gpe_prefactor(psi) .* real.(_integrated_gpe_reduce(k, psi.X, C))
+end
+
+function _gpe_interaction_flux(k, psi::Psi, rhs; g=1.0)
+    C = _gpe_interaction_correlation(psi, rhs; g=g)
+    return .-_integrated_gpe_prefactor(psi) .* real.(_integrated_gpe_reduce(k, psi.X, C))
+end
+
+function _gpe_trap_flux(k, psi::Psi, rhs; V=nothing, t=0.0)
+    C = _gpe_trap_correlation(psi; V=V, t=t, rhs=rhs)
+    isnothing(C) && return zeros(promote_type(eltype(k), Float64), length(k))
+    return .-_integrated_gpe_prefactor(psi) .* real.(_integrated_gpe_reduce(k, psi.X, C))
 end
 
 """
@@ -952,14 +1043,15 @@ function gpe_energy_transfer(k,psi::Psi; g=1.0, V=nothing, t=0.0, components=fal
 end
 
 """
-    gpe_energy_flux(k, psi::Psi; g=1.0, V=nothing, t=0.0)
+    gpe_energy_flux(k, psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
 
 Return the cumulative full GPE energy flux `Π(k) = -∫₀ᵏ T(q)dq`.
-
-For conservation-quality diagnostics, use a dense independent radial grid such as
-`radial_kgrid(psi, 4000)` rather than reusing a sparse plotting grid.
 """
-function gpe_energy_flux(k,psi::Psi; g=1.0, V=nothing, t=0.0)
-    T = gpe_energy_transfer(k,psi; g=g, V=V, t=t)
-    return -_cumulative_integral(k,T)
+function gpe_energy_flux(k, psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
+    rhs = _gpe_rhs(psi; g=g, V=V, t=t)
+    Πkin = _gpe_kinetic_flux(k, psi, rhs)
+    Πint = _gpe_interaction_flux(k, psi, rhs; g=g)
+    Πtrap = _gpe_trap_flux(k, psi, rhs; V=V, t=t)
+    Π = Πkin .+ Πint .+ Πtrap
+    return components ? (Π, Πkin, Πint, Πtrap) : Π
 end
