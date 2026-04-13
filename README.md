@@ -58,8 +58,8 @@ Angle-integrated spectra in this package are evaluated on a user-chosen radial `
 
 ```julia
 k = radial_kgrid(psi, 4000)
-T = gpe_energy_transfer(k, psi; g=1.0)
-Π = gpe_energy_flux(k, psi; g=1.0)
+T = gpe_particle_transfer(k, psi; g=1.0)
+Π = gpe_particle_flux(k, psi; g=1.0)
 ```
 
 This is especially useful for conservation checks, since the radial quadrature can be refined without changing the underlying field data.
@@ -72,7 +72,7 @@ For creation script, see `/example_figure/test_2Dtrap_vortex.jl`.
 
 to reproduce Figure 3(a) of [https://arxiv.org/abs/2112.04012](https://arxiv.org/abs/2112.04012).
 
-For a direct-flux diagnostic example that compares trapped Gaussian states across domain sizes and saves a log-log plot of `|Π(k)|`, see `/example_figure/gpe_flux_gaussian_diagnostic.jl`.
+For a direct-flux diagnostic example that compares trapped Gaussian states across domain sizes and saves a plot of `Π(k)`, see `/example_figure/gpe_flux_gaussian_diagnostic.jl`.
 
 # Citation
 If you use `QuantumFluidSpectra.jl` please cite the paper

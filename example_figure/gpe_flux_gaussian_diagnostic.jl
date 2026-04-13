@@ -1,4 +1,4 @@
-# Diagnostic script for direct GPE energy flux on trapped Gaussian states.
+# Diagnostic script for direct GPE particle flux on trapped states.
 #
 # Run from the package root with, for example:
 #   julia --project=. example_figure/gpe_flux_gaussian_diagnostic.jl
@@ -63,8 +63,8 @@ function representative_kgrid(x; n=50)
 end
 
 function summarize_case(name, k, psi; g=1.0, V=nothing, t=0.0)
-    T = gpe_energy_transfer(k, psi; g=g, V=V, t=t)
-    Πnew = gpe_energy_flux(k, psi; g=g, V=V, t=t)
+    T = gpe_particle_transfer(k, psi; g=g, V=V, t=t)
+    Πnew = gpe_particle_flux(k, psi; g=g, V=V, t=t)
     Πold = -QuantumFluidSpectra._cumulative_integral(k, T)
     dΠ = diff(Πnew) ./ diff(k)
     absdiff = abs.(Πnew .- Πold)

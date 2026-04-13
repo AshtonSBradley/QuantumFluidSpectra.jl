@@ -42,6 +42,6 @@ compressible_density,
 qpressure_density
 export ic_density, iq_density, cq_density
 export density_spectrum, trap_spectrum
-export gpe_energy_transfer, gpe_energy_flux
+export gpe_particle_transfer, gpe_particle_flux
 
 end

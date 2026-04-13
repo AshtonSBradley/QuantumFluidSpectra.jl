@@ -1027,13 +1027,13 @@ function _gpe_trap_flux(k, psi::Psi, rhs; V=nothing, t=0.0)
 end
 
 """
-    gpe_energy_transfer(k, psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
+    gpe_particle_transfer(k, psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
 
-Return the angle-integrated full GPE energy transfer spectrum on radial wavenumbers `k`.
+Return the angle-integrated GPE particle-transfer spectrum on radial wavenumbers `k`.
 
 If `components=true`, also return the kinetic, interaction, and trap contributions.
 """
-function gpe_energy_transfer(k,psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
+function gpe_particle_transfer(k,psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
     rhs = _gpe_rhs(psi; g=g, V=V, t=t)
     Tkin = _gpe_kinetic_transfer(k,psi,rhs)
     Tint = _gpe_interaction_transfer(k,psi,rhs; g=g)
@@ -1043,11 +1043,11 @@ function gpe_energy_transfer(k,psi::Psi; g=1.0, V=nothing, t=0.0, components=fal
 end
 
 """
-    gpe_energy_flux(k, psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
+    gpe_particle_flux(k, psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
 
-Return the cumulative full GPE energy flux `Π(k) = -∫₀ᵏ T(q)dq`.
+Return the cumulative GPE particle flux `Π(k) = -∫₀ᵏ T(q)dq`.
 """
-function gpe_energy_flux(k, psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
+function gpe_particle_flux(k, psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
     rhs = _gpe_rhs(psi; g=g, V=V, t=t)
     Πkin = _gpe_kinetic_flux(k, psi, rhs)
     Πint = _gpe_interaction_flux(k, psi, rhs; g=g)
@@ -1055,3 +1055,19 @@ function gpe_energy_flux(k, psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
     Π = Πkin .+ Πint .+ Πtrap
     return components ? (Π, Πkin, Πint, Πtrap) : Π
 end
+
+"""
+    gpe_energy_transfer(k, psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
+
+Compatibility alias for [`gpe_particle_transfer`](@ref).
+"""
+gpe_energy_transfer(k, psi::Psi; g=1.0, V=nothing, t=0.0, components=false) =
+    gpe_particle_transfer(k, psi; g=g, V=V, t=t, components=components)
+
+"""
+    gpe_energy_flux(k, psi::Psi; g=1.0, V=nothing, t=0.0, components=false)
+
+Compatibility alias for [`gpe_particle_flux`](@ref).
+"""
+gpe_energy_flux(k, psi::Psi; g=1.0, V=nothing, t=0.0, components=false) =
+    gpe_particle_flux(k, psi; g=g, V=V, t=t, components=components)
