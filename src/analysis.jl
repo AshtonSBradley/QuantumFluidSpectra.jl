@@ -395,13 +395,13 @@ end
 Calculates the angle integrated momentum density ``|\\phi(k)|^2``, at the
 points `k`, with the usual radial weight in `k` space ensuring normalization under ∫dk. Units will be population per wavenumber. Arrays `X`, `K` should be computed using `xk_arrays`.
 """
-function kdensity(k,psi::Psi{2})  
+function knumber_density(k,psi::Psi{2})  
     @unpack ψ,X,K = psi; 
 	C = auto_correlate(ψ,X,K)
     return bessel_reduce(k,X...,C)
 end
 
-function kdensity(k,psi::Psi{3})  
+function knumber_density(k,psi::Psi{3})  
     @unpack ψ,X,K = psi; 
 	C = auto_correlate(ψ,X,K)
     return sinc_reduce(k,X...,C)
