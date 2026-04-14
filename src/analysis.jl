@@ -333,6 +333,17 @@ function _sinc_times_pi(x)
     end
 end
 
+function _integrated_sinc_kernel(k, r)
+    kr = k * r
+    akr = abs(kr)
+    if akr > 1e-8
+        return k^3 * (sin(kr) - kr * cos(kr)) / (kr^3)
+    else
+        kr2 = kr * kr
+        return k^3 * (1 / 3 - kr2 / 30)
+    end
+end
+
 function sinc_reduce(k,x,y,z,C)
     dx,dy,dz = x[2]-x[1],y[2]-y[1],z[2]-z[1]
     Nx,Ny,Nz = 2*length(x),2*length(y),2*length(z)
@@ -365,12 +376,7 @@ function _integrated_sinc_reduce(k, x, y, z, C)
 
     @tullio out[i] = begin
         r = hypot(xp[p], yq[q], zr[r_])
-        if r > 1e-12
-            kr = k[i] * r
-            real((sin(kr) - kr * cos(kr)) / r^3 * C[p,q,r_])
-        else
-            real((k[i]^3) / 3 * C[p,q,r_])
-        end
+        real(_integrated_sinc_kernel(k[i], r) * C[p,q,r_])
     end
 
     @. out *= dx * dy * dz
