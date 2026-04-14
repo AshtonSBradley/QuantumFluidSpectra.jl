@@ -90,7 +90,7 @@ end
 
     ## Trap contribution is finite and bookkeeping stays consistent
     V2(x,y,t) = 0.5 .* (x.^2 .+ y.^2)
-    ψg = @. exp(-(X[1]^2 + X[2]'^2))
+    ψg = @. exp(-((X[1] - 0.13)^2 + 1.2 * (X[2]' + 0.07)^2))
     psig = Psi(complex.(ψg), X, K)
     Tg,Tkg,Tig,Ttg = gpe_particle_transfer(kr, psig; g=1.0, V=V2, components=true)
     Πg = gpe_particle_flux(kr, psig; g=1.0, V=V2)
@@ -206,7 +206,7 @@ end
 
     ## Trap contribution is finite and bookkeeping stays consistent
     z3 = reshape(X[3], (1,1,n))
-    ψg = @. exp(-(X[1]^2 + X[2]'^2 + z3^2))
+    ψg = @. exp(-((X[1] - 0.11)^2 + 1.1 * (X[2]' + 0.05)^2 + 0.9 * (z3 - 0.08)^2))
     psig = Psi(complex.(ψg), X, K)
     V3(x,y,z,t) = 0.5 .* (x.^2 .+ y.^2 .+ z.^2)
     Tg,Tkg,Tig,Ttg = gpe_particle_transfer(kr, psig; g=1.0, V=V3, components=true)

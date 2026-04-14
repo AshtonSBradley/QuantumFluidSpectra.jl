@@ -323,6 +323,16 @@ function _integrated_bessel_reduce(k, x, y, C)
     return out
 end
 
+function _sinc_times_pi(x)
+    ax = abs(x)
+    if ax > 1e-12
+        return sin(x) / x
+    else
+        x2 = x * x
+        return 1 - x2 / 6
+    end
+end
+
 function sinc_reduce(k,x,y,z,C)
     dx,dy,dz = x[2]-x[1],y[2]-y[1],z[2]-z[1]
     Nx,Ny,Nz = 2*length(x),2*length(y),2*length(z)
@@ -333,7 +343,10 @@ function sinc_reduce(k,x,y,z,C)
     yq = LinRange(-Ly,Ly,Ny+1)[1:Ny]
     zr = LinRange(-Lz,Lz,Nz+1)[1:Nz]
     E = zero(k)
-    @tullio E[i] = real(π*sinc(k[i]*hypot(xp[p],yq[q],zr[r])/π)*C[p,q,r]) 
+    @tullio E[i] = begin
+        kr = k[i] * hypot(xp[p], yq[q], zr[r])
+        real(_sinc_times_pi(kr) * C[p,q,r])
+    end
     @. E *= k^2*dx*dy*dz/2/pi^2  
     return E 
 end
