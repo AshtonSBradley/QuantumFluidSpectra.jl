@@ -390,7 +390,7 @@ function kinetic_density(k,psi::Psi{3})
 end
 
 """
-	kdensity(k,ψ,X,K)
+	knumber_density(k,ψ,X,K)
 
 Calculates the angle integrated momentum density ``|\\phi(k)|^2``, at the
 points `k`, with the usual radial weight in `k` space ensuring normalization under ∫dk. Units will be population per wavenumber. Arrays `X`, `K` should be computed using `xk_arrays`.
@@ -413,8 +413,8 @@ end
 Calculates the angle integrated wave-action spectrum ``|\\phi(\\mathbf{k})|^2``, at the
 points `k`, without the radial weight in `k` space ensuring normalization under ∫dk. Units will be population per wavenumber cubed. Isotropy is not assumed. Arrays `X`, `K` should be computed using `xk_arrays`.
 """
-wave_action(k,psi::Psi{2}) = _safe_radial_divide(kdensity(k,psi::Psi{2}), k, 1)
-wave_action(k,psi::Psi{3}) = _safe_radial_divide(kdensity(k,psi::Psi{3}), k, 2)
+wave_action(k,psi::Psi{2}) = _safe_radial_divide(knumber_density(k,psi::Psi{2}), k, 1)
+wave_action(k,psi::Psi{3}) = _safe_radial_divide(knumber_density(k,psi::Psi{3}), k, 2)
 
 """
 	incompressible_spectrum(k,ψ)
