@@ -10,6 +10,9 @@ function trapz(x, y)
     return s
 end
 
+include("test_arrays_and_1d.jl")
+include("test_exported_spectra.jl")
+
 @testset "2D Analysis" begin 
     # Velocity and Helmholtz tests
     n = 256

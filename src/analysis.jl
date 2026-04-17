@@ -867,7 +867,8 @@ end
 
 function trap_spectrum(k,V,psi::Psi{3})
     @unpack ψ,X,K = psi; x,y,z = X
-    f = @. abs(ψ)*sqrt(V(x,y',reshape(z,1,1,length(z)),0.))
+    zr = reshape(z,1,1,length(z))
+    f = @. abs(ψ) * sqrt(V(x, y', zr, 0.))
     C = auto_correlate(f,X,K)
 
     return sinc_reduce(k,X...,C)
