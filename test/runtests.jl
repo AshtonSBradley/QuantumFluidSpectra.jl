@@ -24,12 +24,12 @@ include("test_internal_helpers.jl")
 
     ##
     ktest = K[1][2]
-    ψ = @. exp(im*ktest*X[1]*one.(X[2]'))
+    ψ = @. exp(im * ktest * X[1] * one.(X[2]'))
     psi = Psi(ψ, X, K)
 
     ## flow only in x direction, of correct value
     vx, vy = velocity(psi)
-    @test vx ≈ ktest*one.(vx)
+    @test vx ≈ ktest * one.(vx)
     @test vy ≈ zero.(vy)
 
     ## helmholtz decomposition
@@ -48,11 +48,11 @@ include("test_internal_helpers.jl")
     @test sum(et) ≈ sum(ei) + sum(ec)
 
     ## autocorrelation
-    x, y = X;
+    x, y = X
     kx, ky = K
-    dx = x[2]-x[1]
+    dx = x[2] - x[1]
 
-    Natoms = sum(abs2.(ψ))*dx^2
+    Natoms = sum(abs2.(ψ)) * dx^2
     AC = auto_correlate(ψ, X, K)
     Nr, Nim = AC[n+1, n+1] .|> (real, imag)
 
@@ -109,7 +109,8 @@ include("test_internal_helpers.jl")
     Xs, Ks, _, _ = xk_arrays(L, (nsmall, nsmall))
     xs, ys = Xs
     yrs = reshape(ys, 1, :)
-    ψnl = @. (1 + 0.15*cos(2π*xs) + 0.1*sin(4π*yrs)) * exp(im*(2π*xs + 4π*yrs))
+    ψnl =
+        @. (1 + 0.15 * cos(2π * xs) + 0.1 * sin(4π * yrs)) * exp(im * (2π * xs + 4π * yrs))
     psinl = Psi(complex.(ψnl), Xs, Ks)
     knl = collect(LinRange(0.0, maximum(abs.(Ks[1])), 1200))
     Πnl = gpe_particle_flux(knl, psinl; g = 1.0)
@@ -135,12 +136,12 @@ end
 
     ##
     ktest = K[1][2]
-    ψ = exp.(im*ktest*X[1] .* one.(X[2]') .* one.(reshape(X[3], (1, 1, n))))
+    ψ = exp.(im * ktest * X[1] .* one.(X[2]') .* one.(reshape(X[3], (1, 1, n))))
     psi = Psi(ψ, X, K)
 
     ## flow only in x direction, of correct value
     vx, vy, vz = velocity(psi)
-    @test vx ≈ ktest*one.(vx)
+    @test vx ≈ ktest * one.(vx)
     @test vy ≈ zero.(vy)
     @test vz ≈ zero.(vz)
 
@@ -161,12 +162,12 @@ end
     @test sum(et) ≈ sum(ei) + sum(ec)
 
     ## autocorrelation
-    x, y, z = X;
+    x, y, z = X
     kx, ky, kz = K
-    dx = x[2]-x[1];
-    dk = kx[2]-kx[1] # (isotropic grid)
+    dx = x[2] - x[1]
+    dk = kx[2] - kx[1] # (isotropic grid)
 
-    Natoms = sum(abs2.(ψ))*dx^3
+    Natoms = sum(abs2.(ψ)) * dx^3
     AC = auto_correlate(ψ, X, K)
     Nr, Nim = AC[n+1, n+1, n+1] .|> (real, imag)
 
@@ -228,8 +229,8 @@ end
 
     ## Direct flux stays finite on a nonlinear field
     z3 = reshape(X[3], (1, 1, n))
-    ψnl = @. (1 + 0.1*cos(2π*X[1]) + 0.08*sin(2π*X[2]') + 0.06*cos(2π*z3)) *
-       exp(im*(2π*X[1] + 2π*X[2]' + 2π*z3))
+    ψnl = @. (1 + 0.1 * cos(2π * X[1]) + 0.08 * sin(2π * X[2]') + 0.06 * cos(2π * z3)) *
+       exp(im * (2π * X[1] + 2π * X[2]' + 2π * z3))
     psinl = Psi(complex.(ψnl), X, K)
     knl = collect(LinRange(0.0, maximum(abs.(kx)), 120))
     Πnl = gpe_particle_flux(knl, psinl; g = 1.0)

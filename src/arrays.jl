@@ -3,14 +3,14 @@
 
 Create `x` values with periodicity for box specified by length `λ`, using `N` points.
 """
-xvec(L, N) = LinRange(-L/2, L/2, N+1)[2:end] |> collect
+xvec(L, N) = LinRange(-L / 2, L / 2, N + 1)[2:end] |> collect
 
 """
     k = kvec(L,N)
 
 Create `k` values with correct periodicity for box specified by length `λ` for number of points `N`.
 """
-kvec(L, N) = fftfreq(N)*N*2*π/L |> Vector
+kvec(L, N) = fftfreq(N) * N * 2 * π / L |> Vector
 
 
 """
@@ -63,10 +63,10 @@ Measures that make `fft`, `ifft` 2-norm preserving.
 Correct measures for mapping between `x`- and `k`-space.
 """
 function dfft(x, k)
-    dx = x[2]-x[1];
-    dk = k[2]-k[1]
-    Dx = dx/sqrt(2*pi)
-    Dk = length(k)*dk/sqrt(2*pi)
+    dx = x[2] - x[1]
+    dk = k[2] - k[1]
+    Dx = dx / sqrt(2 * pi)
+    Dk = length(k) * dk / sqrt(2 * pi)
     return Dx, Dk
 end
 
