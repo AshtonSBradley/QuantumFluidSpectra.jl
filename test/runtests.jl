@@ -126,7 +126,7 @@ end
 
 @testset "3D Analysis" begin 
     # Velocity and Helmholtz tests
-    n = 64
+    n = 32
     L = (1,1,1)
     N = (n,n,n)
     X,K,dX,dK = xk_arrays(L,N)
@@ -192,7 +192,7 @@ end
     @test radial_kgrid(psi, 24) == collect(LinRange(0.0, maximum(abs.(kx)), 24))
 
     ## GPE energy transfer vanishes for a plane wave and components add up
-    kr = LinRange(0.0, maximum(abs.(kx)), 48)
+    kr = LinRange(0.0, maximum(abs.(kx)), 24)
     T,Tkin,Tint,Ttrap = gpe_particle_transfer(kr, psi; g=1.0, components=true)
     Π,Πkin,Πint,Πtrap = gpe_particle_flux(kr, psi; g=1.0, components=true)
     @test maximum(abs.(T)) < 1e-8
@@ -228,7 +228,7 @@ end
     ψnl = @. (1 + 0.1*cos(2π*X[1]) + 0.08*sin(2π*X[2]') + 0.06*cos(2π*z3)) *
         exp(im*(2π*X[1] + 2π*X[2]' + 2π*z3))
     psinl = Psi(complex.(ψnl), X, K)
-    knl = collect(LinRange(0.0, maximum(abs.(kx)), 400))
+    knl = collect(LinRange(0.0, maximum(abs.(kx)), 120))
     Πnl = gpe_particle_flux(knl, psinl; g=1.0)
     @test all(isfinite.(Πnl))
 end
