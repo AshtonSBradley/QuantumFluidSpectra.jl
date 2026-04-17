@@ -12,6 +12,7 @@ end
 
 include("test_arrays_and_1d.jl")
 include("test_exported_spectra.jl")
+include("test_internal_helpers.jl")
 
 @testset "2D Analysis" begin 
     # Velocity and Helmholtz tests
