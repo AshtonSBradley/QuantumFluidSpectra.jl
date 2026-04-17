@@ -59,8 +59,8 @@ end
     AC = auto_correlate(ψ, X, K)
     CC = cross_correlate(ψ, ψ, X, K)
     @test CC ≈ AC
-    @test imag(AC[n + 1]) ≈ 0.0 atol = 1e-10
-    @test real(AC[n + 1]) ≈ sum(abs2, ψ) * dX[1]
+    @test imag(AC[n+1]) ≈ 0.0 atol = 1e-10
+    @test real(AC[n+1]) ≈ sum(abs2, ψ) * dX[1]
 
     ψ0 = zeros(ComplexF64, size(ψ))
     psi0 = Psi(ψ0, X, K)

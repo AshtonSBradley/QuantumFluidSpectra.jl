@@ -26,12 +26,12 @@ function kz_band_limits(L, ξ)
     return π / L, π / ξ
 end
 
-function wall_profile(s, halfwidth, wallwidth; power=WALL_STEEPNESS)
+function wall_profile(s, halfwidth, wallwidth; power = WALL_STEEPNESS)
     d = max(halfwidth - abs(s), 0.0)
     return exp(-((d / wallwidth)^power))
 end
 
-function box_trap(x, y, z, t; L=LBOX, ξ=sqrt(8.0), μ=1.0)
+function box_trap(x, y, z, t; L = LBOX, ξ = sqrt(8.0), μ = 1.0)
     halfwidth = L / 2
     wallwidth = ξ
     V0 = WALL_HEIGHT_FACTOR * μ
@@ -41,7 +41,7 @@ function box_trap(x, y, z, t; L=LBOX, ξ=sqrt(8.0), μ=1.0)
     return V0 * (wx + wy + wz)
 end
 
-function confinement_envelope(X; L=LBOX, ξ=sqrt(8.0))
+function confinement_envelope(X; L = LBOX, ξ = sqrt(8.0))
     halfwidth = L / 2
     wallwidth = ξ
     x, y, z = X
@@ -53,7 +53,13 @@ function confinement_envelope(X; L=LBOX, ξ=sqrt(8.0))
     return fx .* fy .* fz
 end
 
-function build_inverse_particle_kz_state_3d(; g=G, Ntotal=NTOTAL, L=LBOX, nx=NX, seed=1234)
+function build_inverse_particle_kz_state_3d(;
+    g = G,
+    Ntotal = NTOTAL,
+    L = LBOX,
+    nx = NX,
+    seed = 1234,
+)
     X, K, dX, _ = xk_arrays((L, L, L), (nx, nx, nx))
     dx = dX[1]
     dV = prod(dX)
@@ -72,10 +78,10 @@ function build_inverse_particle_kz_state_3d(; g=G, Ntotal=NTOTAL, L=LBOX, nx=NX,
     kmag = @. sqrt(kx^2 + ky'^2 + kzr^2)
 
     ϕ = zeros(ComplexF64, nx, nx, nx)
-    edges = collect(range(kmin, kmax, length=160))
-    for j in 1:(length(edges) - 1)
+    edges = collect(range(kmin, kmax, length = 160))
+    for j = 1:(length(edges)-1)
         klo = edges[j]
-        khi = edges[j + 1]
+        khi = edges[j+1]
         kshell = 0.5 * (klo + khi)
         Δk = khi - klo
         mask = @. (kmag >= klo) & (kmag < khi)
@@ -91,7 +97,7 @@ function build_inverse_particle_kz_state_3d(; g=G, Ntotal=NTOTAL, L=LBOX, nx=NX,
     ϕ[1, 1, 1] = 0.0
 
     ψ = ifft(ϕ)
-    ψ .*= confinement_envelope(X; L=L, ξ=ξ)
+    ψ .*= confinement_envelope(X; L = L, ξ = ξ)
     ψ .*= sqrt(Ntotal / particle_number(ψ, dV))
 
     psi = Psi(ψ, X, K)
@@ -104,17 +110,17 @@ function kz_reference(k, kn)
     return scale .* ref
 end
 
-function summarize_state(; g=G, Ntotal=NTOTAL, L=LBOX, nx=NX)
-    state = build_inverse_particle_kz_state_3d(; g=g, Ntotal=Ntotal, L=L, nx=nx)
+function summarize_state(; g = G, Ntotal = NTOTAL, L = LBOX, nx = NX)
+    state = build_inverse_particle_kz_state_3d(; g = g, Ntotal = Ntotal, L = L, nx = nx)
     psi = state.psi
     X = psi.X
     dX = (X[1][2] - X[1][1], X[2][2] - X[2][1], X[3][2] - X[3][1])
     dV = prod(dX)
     Ncheck = particle_number(psi.ψ, dV)
     kplot_max = state.knyquist * 0.8
-    k = collect(range(state.kmin, kplot_max, length=240))
-    trap = (x, y, z, t) -> box_trap(x, y, z, t; L=L, ξ=state.ξ, μ=g * state.n0)
-    Π = gpe_particle_flux(k, psi; g=g, V=trap)
+    k = collect(range(state.kmin, kplot_max, length = 240))
+    trap = (x, y, z, t) -> box_trap(x, y, z, t; L = L, ξ = state.ξ, μ = g * state.n0)
+    Π = gpe_particle_flux(k, psi; g = g, V = trap)
     nk = knumber_density(k, psi)
 
     iz = argmin(abs.(X[3]))
@@ -133,54 +139,63 @@ function make_plot(data)
         X[1],
         X[2],
         data.zslice',
-        xlabel="x",
-        ylabel="y",
-        title=@sprintf("|ψ(x,y,z≈0)|² at z = %.3f", z0),
-        colorbar_title="density",
-        aspect_ratio=:equal,
-        frame=:box,
-        left_margin=6mm,
-        bottom_margin=6mm,
+        xlabel = "x",
+        ylabel = "y",
+        title = @sprintf("|ψ(x,y,z≈0)|² at z = %.3f", z0),
+        colorbar_title = "density",
+        aspect_ratio = :equal,
+        frame = :box,
+        left_margin = 6mm,
+        bottom_margin = 6mm,
     )
 
     p2 = plot(
         data.k,
         data.Π,
-        xlabel="k",
-        ylabel="Π(k)",
-        title="Particle flux",
-        frame=:box,
-        lw=2.5,
-        legend=false,
-        left_margin=6mm,
-        bottom_margin=6mm,
+        xlabel = "k",
+        ylabel = "Π(k)",
+        title = "Particle flux",
+        frame = :box,
+        lw = 2.5,
+        legend = false,
+        left_margin = 6mm,
+        bottom_margin = 6mm,
     )
-    hline!(p2, [0.0], color=:black, linestyle=:dash, alpha=0.5, lw=1.5)
+    hline!(p2, [0.0], color = :black, linestyle = :dash, alpha = 0.5, lw = 1.5)
 
     p3 = plot(
         data.k,
         data.nk,
-        xscale=:log10,
-        yscale=:log10,
-        xlabel="k",
-        ylabel="knumber_density(k)",
-        title="Angle-averaged k-space number density",
-        frame=:box,
-        lw=2.5,
-        label="measured",
-        left_margin=6mm,
-        bottom_margin=6mm,
+        xscale = :log10,
+        yscale = :log10,
+        xlabel = "k",
+        ylabel = "knumber_density(k)",
+        title = "Angle-averaged k-space number density",
+        frame = :box,
+        lw = 2.5,
+        label = "measured",
+        left_margin = 6mm,
+        bottom_margin = 6mm,
     )
-    plot!(p3, data.k, prefactor .* data.k .^ (-KZ_OCCUPATION_EXPONENT), linestyle=:dash, lw=2, label="k^(-7/3) guide")
-    vline!(p3, [data.kmax], linestyle=:dot, lw=1.5, color=:black, alpha=0.7, label="π/ξ")
-
-    return plot(
-        p1,
-        p2,
+    plot!(
         p3,
-        layout=(1, 3),
-        size=(1500, 460),
+        data.k,
+        prefactor .* data.k .^ (-KZ_OCCUPATION_EXPONENT),
+        linestyle = :dash,
+        lw = 2,
+        label = "k^(-7/3) guide",
     )
+    vline!(
+        p3,
+        [data.kmax],
+        linestyle = :dot,
+        lw = 1.5,
+        color = :black,
+        alpha = 0.7,
+        label = "π/ξ",
+    )
+
+    return plot(p1, p2, p3, layout = (1, 3), size = (1500, 460))
 end
 
 function main()
