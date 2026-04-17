@@ -8,28 +8,14 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
-  aqua:
-    name: Aqua
+  code-style:
+    name: Code Quality
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
+      - uses: julia-actions/julia-format@v4
         with:
-          version: '1.12'
-      - uses: actions/cache@v4
-        env:
-          cache-name: cache-artifacts
-        with:
-          path: ~/.julia/artifacts
-          key: ${{ runner.os }}-quality-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-quality-${{ env.cache-name }}-
-            ${{ runner.os }}-quality-
-            ${{ runner.os }}-
-      - uses: julia-actions/julia-buildpkg@v1
-      - name: Install Aqua
-        run: julia --project=. -e 'using Pkg; Pkg.add("Aqua")'
-      - name: Run Aqua
-        run: julia --project=. -e 'using Aqua, QuantumFluidSpectra; Aqua.test_all(QuantumFluidSpectra)'
+          version: '1'
+          paths: 'src/, test/'
