@@ -23,6 +23,40 @@
     @test QuantumFluidSpectra._integrated_bessel_reduce(k2r, X2[1], X2[2], zc2) ≈
           zeros(length(k2r))
 
+    p2 = collect(0:(size(zc2, 1)-1))
+    q2 = collect(0:(size(zc2, 2)-1))
+    c2 = @. complex(cos(2π * p2 / size(zc2, 1))) + 0.2im * sin(2π * q2' / size(zc2, 2))
+    ids2, radii2, dx2, _ = QuantumFluidSpectra._cached_radial_ids_2d(X2[1], X2[2])
+    @test minimum(ids2) == 1
+    @test maximum(ids2) == length(radii2)
+    cached_bessel_weights =
+        QuantumFluidSpectra.besselj0.(reshape(k2r, :, 1) .* reshape(radii2, 1, :))
+    ix2 = reshape(collect(0:(size(zc2, 1)-1)) .- size(zc2, 1) ÷ 2, :, 1)
+    iy2 = reshape(collect(0:(size(zc2, 2)-1)) .- size(zc2, 2) ÷ 2, 1, :)
+    full_radii2 = dx2 .* sqrt.(ix2 .^ 2 .+ iy2 .^ 2)
+    full_bessel_weights =
+        QuantumFluidSpectra.besselj0.(
+            reshape(k2r, :, 1, 1) .* reshape(full_radii2, 1, size(zc2)...),
+        )
+    lookup_bessel_weights = similar(full_bessel_weights)
+    for q in axes(ids2, 2), p in axes(ids2, 1), i in eachindex(k2r)
+        lookup_bessel_weights[i, p, q] = cached_bessel_weights[i, ids2[p, q]]
+    end
+    @test lookup_bessel_weights == full_bessel_weights
+
+    cached2 = QuantumFluidSpectra._cached_bessel_reduce(k2r, X2[1], X2[2], c2)
+    @test !isnothing(cached2)
+    @test cached2 ≈ QuantumFluidSpectra.bessel_reduce(k2r, X2[1], X2[2], c2)
+    @test isnothing(QuantumFluidSpectra._cached_bessel_reduce(k2r, 2 .* X2[1], X2[2], c2))
+    @test all(isfinite, QuantumFluidSpectra.bessel_reduce(k2r, 2 .* X2[1], X2[2], c2))
+    X2f = map(x -> Float32.(x), X2)
+    k2f = Float32.(k2r)
+    c2f = ComplexF32.(c2)
+    _, radii2f, _, _ = QuantumFluidSpectra._cached_radial_ids_2d(X2f[1], X2f[2])
+    @test eltype(radii2f) === Float32
+    @test eltype(QuantumFluidSpectra._cached_bessel_reduce(k2f, X2f[1], X2f[2], c2f)) ===
+          Float32
+
     V2(x, y, t) = 0.5 * (x^2 + y^2)
     trap2 = QuantumFluidSpectra._trap_field(psi2, V2, 0.0)
     rhs2 = QuantumFluidSpectra._gpe_rhs(psi2; g = 1.0, V = V2, t = 0.0)
@@ -63,6 +97,49 @@
           zeros(length(k3r))
     @test QuantumFluidSpectra._integrated_sinc_reduce(k3r, X3[1], X3[2], X3[3], zc3) ≈
           zeros(length(k3r))
+    p3 = collect(0:(size(zc3, 1)-1))
+    q3 = collect(0:(size(zc3, 2)-1))
+    r3 = collect(0:(size(zc3, 3)-1))
+    p3r = reshape(p3, :, 1, 1)
+    q3r = reshape(q3, 1, :, 1)
+    r3r = reshape(r3, 1, 1, :)
+    c3 = @. complex(cos(2π * p3r / size(zc3, 1))) +
+       0.2im * sin(2π * q3r / size(zc3, 2)) +
+       0.1 * cos(2π * r3r / size(zc3, 3))
+    ids3, radii3, dx3, _, _ = QuantumFluidSpectra._cached_radial_ids_3d(X3[1], X3[2], X3[3])
+    @test minimum(ids3) == 1
+    @test maximum(ids3) == length(radii3)
+    cached_sinc_weights =
+        QuantumFluidSpectra._sinc_times_pi.(reshape(k3r, :, 1) .* reshape(radii3, 1, :))
+    ix3 = reshape(collect(0:(size(zc3, 1)-1)) .- size(zc3, 1) ÷ 2, :, 1, 1)
+    iy3 = reshape(collect(0:(size(zc3, 2)-1)) .- size(zc3, 2) ÷ 2, 1, :, 1)
+    iz3 = reshape(collect(0:(size(zc3, 3)-1)) .- size(zc3, 3) ÷ 2, 1, 1, :)
+    full_radii3 = dx3 .* sqrt.(ix3 .^ 2 .+ iy3 .^ 2 .+ iz3 .^ 2)
+    full_sinc_weights =
+        QuantumFluidSpectra._sinc_times_pi.(
+            reshape(k3r, :, 1, 1, 1) .* reshape(full_radii3, 1, size(zc3)...),
+        )
+    lookup_sinc_weights = similar(full_sinc_weights)
+    for r in axes(ids3, 3), q in axes(ids3, 2), p in axes(ids3, 1), i in eachindex(k3r)
+        lookup_sinc_weights[i, p, q, r] = cached_sinc_weights[i, ids3[p, q, r]]
+    end
+    @test lookup_sinc_weights == full_sinc_weights
+
+    cached3 = QuantumFluidSpectra._cached_sinc_reduce(k3r, X3[1], X3[2], X3[3], c3)
+    @test !isnothing(cached3)
+    @test cached3 ≈ QuantumFluidSpectra.sinc_reduce(k3r, X3[1], X3[2], X3[3], c3)
+    @test isnothing(
+        QuantumFluidSpectra._cached_sinc_reduce(k3r, 2 .* X3[1], X3[2], X3[3], c3),
+    )
+    @test all(isfinite, QuantumFluidSpectra.sinc_reduce(k3r, 2 .* X3[1], X3[2], X3[3], c3))
+    X3f = map(x -> Float32.(x), X3)
+    k3f = Float32.(k3r)
+    c3f = ComplexF32.(c3)
+    _, radii3f, _, _, _ = QuantumFluidSpectra._cached_radial_ids_3d(X3f[1], X3f[2], X3f[3])
+    @test eltype(radii3f) === Float32
+    @test eltype(
+        QuantumFluidSpectra._cached_sinc_reduce(k3f, X3f[1], X3f[2], X3f[3], c3f),
+    ) === Float32
     @test QuantumFluidSpectra._sinc_times_pi(0.0) == 1.0
     @test QuantumFluidSpectra._sinc_times_pi(1e-3) ≈ sin(1e-3) / 1e-3
     @test QuantumFluidSpectra._integrated_sinc_kernel(2.0, 0.0) ≈ 8 / 3
@@ -85,4 +162,26 @@
     @test QuantumFluidSpectra._shell_area(psi3) == 4π
     @test QuantumFluidSpectra._integrated_gpe_prefactor(psi3) == 1 / π^2
     @test QuantumFluidSpectra._gradient_fields(psi3) == gradient(psi3)
+end
+
+@testset "Checkpoint CUDA stubs without CUDA.jl" begin
+    @test CUDADevice() isa CUDADevice
+    @test_throws ErrorException gpu("not a psi"; copy = false)
+    @test_throws ErrorException cpu("not a psi"; copy = false)
+    err = try
+        checkpoint_analysis_cache("not a psi"; nradial = 4)
+    catch err
+        err
+    end
+    @test err isa ErrorException
+    @test occursin("CUDA checkpoint analysis requires CUDA.jl", sprint(showerror, err))
+    err = try
+        checkpoint_analysis_cache("not a psi"; backend = :cpu)
+    catch err
+        err
+    end
+    @test err isa ErrorException
+    @test occursin("Unsupported checkpoint analysis backend", sprint(showerror, err))
+    @test_throws ErrorException analyze_checkpoint!(nothing, nothing; spectra = (:density,))
+    @test_throws ErrorException checkpoint_results(nothing; host = true)
 end

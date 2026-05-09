@@ -319,6 +319,9 @@ cross_correlate(psi1::Psi{D}, psi2::Psi{D}) where {D} =
     cross_correlate(psi1.ψ, psi2.ψ, psi1.X, psi1.K)
 
 function bessel_reduce(k, x, y, C)
+    cached = _cached_bessel_reduce(k, x, y, C)
+    !isnothing(cached) && return cached
+
     dx, dy = x[2] - x[1], y[2] - y[1]
     Nx, Ny = 2 * length(x), 2 * length(y)
     Lx = x[end] - x[begin] + dx
@@ -375,7 +378,100 @@ function _integrated_sinc_kernel(k, r)
     end
 end
 
+function _cached_radial_ids_2d(x, y)
+    dx, dy = x[2] - x[1], y[2] - y[1]
+    isapprox(dx, dy; rtol = sqrt(eps(float(real(dx))))) || return nothing
+    Nx, Ny = 2 * length(x), 2 * length(y)
+    px0, py0 = Nx ÷ 2, Ny ÷ 2
+    ids = Array{Int32}(undef, Nx, Ny)
+    index = Dict{Int,Int32}()
+    RT = typeof(float(real(dx)))
+    radii = RT[]
+    next_id = Int32(0)
+    for q = 1:Ny, p = 1:Nx
+        ix = p - 1 - px0
+        iy = q - 1 - py0
+        key = ix * ix + iy * iy
+        id = get(index, key, Int32(0))
+        if id == 0
+            push!(radii, RT(dx * sqrt(key)))
+            next_id += 1
+            id = next_id
+            index[key] = id
+        end
+        ids[p, q] = id
+    end
+    return ids, radii, dx, dy
+end
+
+function _cached_radial_ids_3d(x, y, z)
+    dx, dy, dz = x[2] - x[1], y[2] - y[1], z[2] - z[1]
+    tol = sqrt(eps(float(real(dx))))
+    (isapprox(dx, dy; rtol = tol) && isapprox(dx, dz; rtol = tol)) || return nothing
+    Nx, Ny, Nz = 2 * length(x), 2 * length(y), 2 * length(z)
+    px0, py0, pz0 = Nx ÷ 2, Ny ÷ 2, Nz ÷ 2
+    ids = Array{Int32}(undef, Nx, Ny, Nz)
+    index = Dict{Int,Int32}()
+    RT = typeof(float(real(dx)))
+    radii = RT[]
+    next_id = Int32(0)
+    for r = 1:Nz, q = 1:Ny, p = 1:Nx
+        ix = p - 1 - px0
+        iy = q - 1 - py0
+        iz = r - 1 - pz0
+        key = ix * ix + iy * iy + iz * iz
+        id = get(index, key, Int32(0))
+        if id == 0
+            push!(radii, RT(dx * sqrt(key)))
+            next_id += 1
+            id = next_id
+            index[key] = id
+        end
+        ids[p, q, r] = id
+    end
+    return ids, radii, dx, dy, dz
+end
+
+function _cached_bessel_reduce(k, x, y, C)
+    cache = _cached_radial_ids_2d(x, y)
+    isnothing(cache) && return nothing
+    ids, radii, dx, dy = cache
+    weights = besselj0.(reshape(k, :, 1) .* reshape(radii, 1, :))
+    RT = promote_type(eltype(k), typeof(float(real(zero(eltype(C))))))
+    out = zeros(RT, length(k))
+    for I in eachindex(C, ids)
+        id = ids[I]
+        c = real(C[I])
+        @inbounds for i in eachindex(k)
+            out[i] += weights[i, id] * c
+        end
+    end
+    @. out *= k * dx * dy / 2 / pi
+    return out
+end
+
+function _cached_sinc_reduce(k, x, y, z, C)
+    cache = _cached_radial_ids_3d(x, y, z)
+    isnothing(cache) && return nothing
+    ids, radii, dx, dy, dz = cache
+    weights = _sinc_times_pi.(reshape(k, :, 1) .* reshape(radii, 1, :))
+    RT = promote_type(eltype(k), typeof(float(real(zero(eltype(C))))))
+    out = zeros(RT, length(k))
+    for I in eachindex(C, ids)
+        id = ids[I]
+        c = real(C[I])
+        @inbounds for i in eachindex(k)
+            out[i] += weights[i, id] * c
+        end
+    end
+    @. out *= k^2 * dx * dy * dz / 2 / pi^2
+    return out
+end
+
 function sinc_reduce(k, x, y, z, C)
+    cached = _cached_sinc_reduce(k, x, y, z, C)
+    !isnothing(cached) && return cached
+
     dx, dy, dz = x[2] - x[1], y[2] - y[1], z[2] - z[1]
     Nx, Ny, Nz = 2 * length(x), 2 * length(y), 2 * length(z)
     Lx = x[end] - x[begin] + dx
