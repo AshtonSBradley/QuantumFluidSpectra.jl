@@ -53,20 +53,20 @@ function main()
     dim in (2, 3) || error("--dim must be 2 or 3")
     CUDA.functional() || error("CUDA.functional() is false on this machine")
 
-    println("QuantumFluidSpectra checkpoint CPU/GPU benchmark")
+    println("QuantumFluidSpectra GPU/CPU spectra benchmark")
     println("device: ", CUDA.name(CUDA.device()))
     println("dim: ", dim, ", n: ", n, ", nradial: ", nradial)
 
     psi_cpu, k_cpu = _problem(dim, n, nradial)
     psi_gpu = gpu(psi_cpu)
-    cache = checkpoint_analysis_cache(psi_gpu; k = k_cpu)
+    cache = spectrum_cache(psi_gpu; k = k_cpu)
 
     density_cpu = density_spectrum(k_cpu, psi_cpu)
     kinetic_cpu = kinetic_density(k_cpu, psi_cpu)
 
-    analyze_checkpoint!(cache, psi_gpu)
+    analyze_spectra!(cache, psi_gpu)
     CUDA.synchronize()
-    result_gpu = checkpoint_results(cache; host = true)
+    result_gpu = spectrum_results(cache; host = true)
 
     density_err =
         maximum(abs.(result_gpu.density .- density_cpu)) /
@@ -83,12 +83,12 @@ function main()
     end seconds = seconds
 
     gpu_trial = @benchmark begin
-        analyze_checkpoint!($cache, $psi_gpu)
+        analyze_spectra!($cache, $psi_gpu)
         CUDA.synchronize()
     end seconds = seconds
 
     _summary("CPU density + kinetic", cpu_trial)
-    _summary("GPU checkpoint density + kinetic", gpu_trial)
+    _summary("GPU density + kinetic", gpu_trial)
 end
 
 main()
