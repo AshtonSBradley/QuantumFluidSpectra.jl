@@ -25,7 +25,7 @@ end
 
 include("arrays.jl")
 include("analysis.jl")
-include("checkpoint_analysis.jl")
+include("gpu_analysis.jl")
 
 export Psi, xvec, kvec, xvecs, kvecs, radial_kgrid
 export auto_correlate, cross_correlate
@@ -40,7 +40,6 @@ export incompressible_density, compressible_density, qpressure_density
 export ic_density, iq_density, cq_density
 export density_spectrum, trap_spectrum
 export gpe_particle_transfer, gpe_particle_flux
-export CUDADevice,
-    gpu, cpu, checkpoint_analysis_cache, analyze_checkpoint!, checkpoint_results
+export CUDADevice, gpu, cpu, spectrum_cache, analyze_spectra!, spectrum_results
 
 end

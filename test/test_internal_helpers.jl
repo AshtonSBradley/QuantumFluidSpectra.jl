@@ -164,24 +164,24 @@
     @test QuantumFluidSpectra._gradient_fields(psi3) == gradient(psi3)
 end
 
-@testset "Checkpoint CUDA stubs without CUDA.jl" begin
+@testset "CUDA spectral-analysis stubs without CUDA.jl" begin
     @test CUDADevice() isa CUDADevice
     @test_throws ErrorException gpu("not a psi"; copy = false)
     @test_throws ErrorException cpu("not a psi"; copy = false)
     err = try
-        checkpoint_analysis_cache("not a psi"; nradial = 4)
+        spectrum_cache("not a psi"; nradial = 4)
     catch err
         err
     end
     @test err isa ErrorException
-    @test occursin("CUDA checkpoint analysis requires CUDA.jl", sprint(showerror, err))
+    @test occursin("CUDA spectral analysis requires CUDA.jl", sprint(showerror, err))
     err = try
-        checkpoint_analysis_cache("not a psi"; backend = :cpu)
+        spectrum_cache("not a psi"; backend = :cpu)
     catch err
         err
     end
     @test err isa ErrorException
-    @test occursin("Unsupported checkpoint analysis backend", sprint(showerror, err))
-    @test_throws ErrorException analyze_checkpoint!(nothing, nothing; spectra = (:density,))
-    @test_throws ErrorException checkpoint_results(nothing; host = true)
+    @test occursin("Unsupported spectral analysis backend", sprint(showerror, err))
+    @test_throws ErrorException analyze_spectra!(nothing, nothing; spectra = (:density,))
+    @test_throws ErrorException spectrum_results(nothing; host = true)
 end
