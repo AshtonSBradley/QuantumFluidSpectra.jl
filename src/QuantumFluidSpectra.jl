@@ -29,6 +29,7 @@ include("gpu_analysis.jl")
 
 export Psi, xvec, kvec, xvecs, kvecs, radial_kgrid
 export auto_correlate, cross_correlate
+export RadialReductionCache, radial_reduction_cache, radial_reduce
 export bessel_reduce, sinc_reduce, gv, gv3
 export log10range, convolve
 
@@ -40,6 +41,7 @@ export incompressible_density, compressible_density, qpressure_density
 export ic_density, iq_density, cq_density
 export density_spectrum, trap_spectrum
 export gpe_particle_transfer, gpe_particle_flux
-export CUDADevice, gpu, cpu, spectrum_cache, analyze_spectra!, spectrum_results
+export AbstractSpectrumBackend, CUDADevice, MetalDevice, OneAPIDevice
+export gpu, cpu, spectrum_cache, analyze_spectra!, spectrum_results
 
 end
