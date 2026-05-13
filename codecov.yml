@@ -1,3 +1,4 @@
 ignore:
   - "ext/QuantumFluidSpectraCUDAExt.jl"
   - "benchmark/**"
+  - "example_figure/**"

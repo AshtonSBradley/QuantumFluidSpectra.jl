@@ -16,6 +16,7 @@ mutable struct CUDASpectrumCache{D,T,RT,KT,XT,R}
     k::CUDA.CuVector{RT}
     DX::NTuple{D,RT}
     DK::NTuple{D,RT}
+    spacing::NTuple{D,RT}
     corr::CUDA.CuArray{T,D}
     work::CUDA.CuArray{T,D}
     fftwork::CUDA.CuArray{T,D}
@@ -66,13 +67,6 @@ function _require_device_psi(psi::Psi)
     return nothing
 end
 
-function _grid_metrics(x)
-    xh = Array(x)
-    dx = xh[2] - xh[1]
-    L = xh[end] - xh[begin] + dx
-    return dx, L
-end
-
 function _fft_differentials(X, K)
     return ntuple(length(X)) do i
         x = Array(X[i])
@@ -81,6 +75,13 @@ function _fft_differentials(X, K)
         dk = k[2] - k[1]
         RT = promote_type(eltype(x), eltype(k))
         return (RT(dx / sqrt(2π)), RT(length(k) * dk / sqrt(2π)))
+    end
+end
+
+function _grid_spacings(X, ::Type{RT}) where {RT}
+    return ntuple(length(X)) do i
+        x = Array(X[i])
+        RT(x[2] - x[1])
     end
 end
 
@@ -169,16 +170,14 @@ function spectrum_cache(
     DXDK = _fft_differentials(psi.X, psi.K)
     DX = ntuple(i -> RT(DXDK[i][1]), D)
     DK = ntuple(i -> RT(DXDK[i][2]), D)
+    spacing = _grid_spacings(psi.X, RT)
     nlinear = prod(padsize)
     groups = cld(nlinear, chunk)
     radial = if D == 2
-        dx = Array(psi.X[1][2:2] .- psi.X[1][1:1])[1]
-        dy = Array(psi.X[2][2:2] .- psi.X[2][1:1])[1]
+        dx, dy = spacing
         _build_bessel_radius_cache(kout, padsize[1], padsize[2], dx, dy)
     elseif D == 3
-        dx = Array(psi.X[1][2:2] .- psi.X[1][1:1])[1]
-        dy = Array(psi.X[2][2:2] .- psi.X[2][1:1])[1]
-        dz = Array(psi.X[3][2:2] .- psi.X[3][1:1])[1]
+        dx, dy, dz = spacing
         _build_sinc_radius_cache(kout, padsize[1], padsize[2], padsize[3], dx, dy, dz)
     else
         nothing
@@ -190,6 +189,7 @@ function spectrum_cache(
         kout,
         DX,
         DK,
+        spacing,
         CUDA.zeros(T, padsize),
         CUDA.zeros(T, padsize),
         CUDA.zeros(T, padsize),
@@ -386,9 +386,7 @@ function _sinc_reduce_cached_kernel!(partials, C, rid, weights, nx, ny, nz, chun
 end
 
 function _reduce!(out, cache::CUDASpectrumCache{2}, C)
-    x, y = cache.X
-    dx, _ = _grid_metrics(x)
-    dy, _ = _grid_metrics(y)
+    dx, dy = cache.spacing
     nx, ny = size(C)
     fill!(cache.partials, zero(eltype(cache.partials)))
     threads = 256
@@ -409,10 +407,7 @@ function _reduce!(out, cache::CUDASpectrumCache{2}, C)
 end
 
 function _reduce!(out, cache::CUDASpectrumCache{3}, C)
-    x, y, z = cache.X
-    dx, _ = _grid_metrics(x)
-    dy, _ = _grid_metrics(y)
-    dz, _ = _grid_metrics(z)
+    dx, dy, dz = cache.spacing
     nx, ny, nz = size(C)
     fill!(cache.partials, zero(eltype(cache.partials)))
     threads = 256

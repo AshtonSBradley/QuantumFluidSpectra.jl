@@ -71,8 +71,9 @@ kmin = 0.1kR
 kmax = 1.2kxi
 Np = 1000
 k = LinRange(kmin, kmax, Np)
+cache2 = radial_reduction_cache(k, X)
 
-εki = incompressible_spectrum(k, Psi(psi.ψ, X, K))
+εki = incompressible_spectrum(cache2, Psi(psi.ψ, X, K))
 # calc spec and save 
 # ψv = psi.ψ
 # psiv = Psi(ψv,X,K)
@@ -83,7 +84,7 @@ k = LinRange(kmin, kmax, Np)
 
 
 ## Fig 3 (a) ui power spectrum plot
-pgfplotsx()
+gr()
 ep3a = new_plot()
 
 # Analytic form homog. [PRX]
@@ -154,5 +155,6 @@ annotate!(82, 0.92, text(L"(b)", 10))
 ## combined plot
 l = @layout [a; b]
 pc = plot(ep3a, ep3b, layout = l, size = (430, 350))
+savefig(pc, joinpath(@__DIR__, "central_vortex_cache2.png"))
 # "2d_trapvtf_combined.pdf" |> savefig
 plot!()

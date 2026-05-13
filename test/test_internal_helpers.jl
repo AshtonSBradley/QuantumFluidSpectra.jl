@@ -31,6 +31,22 @@
     @test maximum(ids2) == length(radii2)
     cached_bessel_weights =
         QuantumFluidSpectra.besselj0.(reshape(k2r, :, 1) .* reshape(radii2, 1, :))
+    serial_bessel = zeros(Float64, length(k2r))
+    QuantumFluidSpectra._radial_reduce_partial!(
+        serial_bessel,
+        c2,
+        ids2,
+        cached_bessel_weights,
+        eachindex(c2),
+    )
+    @test QuantumFluidSpectra._threaded_radial_weight_reduce(
+        k2r,
+        c2,
+        ids2,
+        cached_bessel_weights,
+        Float64,
+        ntasks = 2,
+    ) ≈ serial_bessel
     ix2 = reshape(collect(0:(size(zc2, 1)-1)) .- size(zc2, 1) ÷ 2, :, 1)
     iy2 = reshape(collect(0:(size(zc2, 2)-1)) .- size(zc2, 2) ÷ 2, 1, :)
     full_radii2 = dx2 .* sqrt.(ix2 .^ 2 .+ iy2 .^ 2)
@@ -43,11 +59,21 @@
         lookup_bessel_weights[i, p, q] = cached_bessel_weights[i, ids2[p, q]]
     end
     @test lookup_bessel_weights == full_bessel_weights
+    direct_bessel =
+        vec(sum(full_bessel_weights .* reshape(real.(c2), 1, size(c2)...); dims = (2, 3)))
+    @. direct_bessel *= k2r * dx2^2 / 2 / pi
 
     cached2 = QuantumFluidSpectra._cached_bessel_reduce(k2r, X2[1], X2[2], c2)
     @test !isnothing(cached2)
     @test cached2 ≈ QuantumFluidSpectra.bessel_reduce(k2r, X2[1], X2[2], c2)
+    radial_cache2 = radial_reduction_cache(k2r, X2)
+    @test radial_cache2 isa RadialReductionCache{2}
+    @test bessel_reduce(radial_cache2, c2) ≈ cached2
+    @test bessel_reduce(radial_cache2, c2) ≈ direct_bessel
+    @test density_spectrum(radial_cache2, psi2) ≈ density_spectrum(k2r, psi2)
+    @test wave_action(radial_cache2, psi2) ≈ wave_action(k2r, psi2)
     @test isnothing(QuantumFluidSpectra._cached_bessel_reduce(k2r, 2 .* X2[1], X2[2], c2))
+    @test isnothing(radial_reduction_cache(k2r, 2 .* X2[1], X2[2]))
     @test all(isfinite, QuantumFluidSpectra.bessel_reduce(k2r, 2 .* X2[1], X2[2], c2))
     X2f = map(x -> Float32.(x), X2)
     k2f = Float32.(k2r)
@@ -111,6 +137,22 @@
     @test maximum(ids3) == length(radii3)
     cached_sinc_weights =
         QuantumFluidSpectra._sinc_times_pi.(reshape(k3r, :, 1) .* reshape(radii3, 1, :))
+    serial_sinc = zeros(Float64, length(k3r))
+    QuantumFluidSpectra._radial_reduce_partial!(
+        serial_sinc,
+        c3,
+        ids3,
+        cached_sinc_weights,
+        eachindex(c3),
+    )
+    @test QuantumFluidSpectra._threaded_radial_weight_reduce(
+        k3r,
+        c3,
+        ids3,
+        cached_sinc_weights,
+        Float64,
+        ntasks = 2,
+    ) ≈ serial_sinc
     ix3 = reshape(collect(0:(size(zc3, 1)-1)) .- size(zc3, 1) ÷ 2, :, 1, 1)
     iy3 = reshape(collect(0:(size(zc3, 2)-1)) .- size(zc3, 2) ÷ 2, 1, :, 1)
     iz3 = reshape(collect(0:(size(zc3, 3)-1)) .- size(zc3, 3) ÷ 2, 1, 1, :)
@@ -124,13 +166,23 @@
         lookup_sinc_weights[i, p, q, r] = cached_sinc_weights[i, ids3[p, q, r]]
     end
     @test lookup_sinc_weights == full_sinc_weights
+    direct_sinc =
+        vec(sum(full_sinc_weights .* reshape(real.(c3), 1, size(c3)...); dims = (2, 3, 4)))
+    @. direct_sinc *= k3r^2 * dx3^3 / 2 / pi^2
 
     cached3 = QuantumFluidSpectra._cached_sinc_reduce(k3r, X3[1], X3[2], X3[3], c3)
     @test !isnothing(cached3)
     @test cached3 ≈ QuantumFluidSpectra.sinc_reduce(k3r, X3[1], X3[2], X3[3], c3)
+    radial_cache3 = radial_reduction_cache(k3r, X3)
+    @test radial_cache3 isa RadialReductionCache{3}
+    @test sinc_reduce(radial_cache3, c3) ≈ cached3
+    @test sinc_reduce(radial_cache3, c3) ≈ direct_sinc
+    @test density_spectrum(radial_cache3, psi3) ≈ density_spectrum(k3r, psi3)
+    @test wave_action(radial_cache3, psi3) ≈ wave_action(k3r, psi3)
     @test isnothing(
         QuantumFluidSpectra._cached_sinc_reduce(k3r, 2 .* X3[1], X3[2], X3[3], c3),
     )
+    @test isnothing(radial_reduction_cache(k3r, 2 .* X3[1], X3[2], X3[3]))
     @test all(isfinite, QuantumFluidSpectra.sinc_reduce(k3r, 2 .* X3[1], X3[2], X3[3], c3))
     X3f = map(x -> Float32.(x), X3)
     k3f = Float32.(k3r)
@@ -166,8 +218,16 @@ end
 
 @testset "CUDA spectral-analysis stubs without CUDA.jl" begin
     @test CUDADevice() isa CUDADevice
+    @test MetalDevice() isa AbstractSpectrumBackend
+    @test OneAPIDevice() isa AbstractSpectrumBackend
     @test_throws ErrorException gpu("not a psi"; copy = false)
+    @test_throws ErrorException gpu(CUDADevice(), "not a psi"; copy = false)
+    @test_throws ErrorException gpu(MetalDevice(), "not a psi"; copy = false)
+    @test_throws ErrorException gpu(OneAPIDevice(), "not a psi"; copy = false)
     @test_throws ErrorException cpu("not a psi"; copy = false)
+    @test_throws ErrorException cpu(CUDADevice(), "not a psi"; copy = false)
+    @test_throws ErrorException cpu(MetalDevice(), "not a psi"; copy = false)
+    @test_throws ErrorException cpu(OneAPIDevice(), "not a psi"; copy = false)
     err = try
         spectrum_cache("not a psi"; nradial = 4)
     catch err
@@ -175,6 +235,20 @@ end
     end
     @test err isa ErrorException
     @test occursin("CUDA spectral analysis requires CUDA.jl", sprint(showerror, err))
+    err = try
+        spectrum_cache("not a psi"; backend = MetalDevice(), nradial = 4)
+    catch err
+        err
+    end
+    @test err isa ErrorException
+    @test occursin("Metal spectral analysis requires Metal.jl", sprint(showerror, err))
+    err = try
+        spectrum_cache("not a psi"; backend = OneAPIDevice(), nradial = 4)
+    catch err
+        err
+    end
+    @test err isa ErrorException
+    @test occursin("oneAPI spectral analysis requires oneAPI.jl", sprint(showerror, err))
     err = try
         spectrum_cache("not a psi"; backend = :cpu)
     catch err

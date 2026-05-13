@@ -432,40 +432,142 @@ function _cached_radial_ids_3d(x, y, z)
     return ids, radii, dx, dy, dz
 end
 
-function _cached_bessel_reduce(k, x, y, C)
+struct RadialReductionCache{D,K,I,R,W,S}
+    k::K
+    ids::I
+    radii::R
+    weights::W
+    spacing::S
+end
+
+radial_k(k) = k
+radial_k(cache::RadialReductionCache) = cache.k
+
+function radial_reduction_cache(k, x, y)
     cache = _cached_radial_ids_2d(x, y)
     isnothing(cache) && return nothing
     ids, radii, dx, dy = cache
     weights = besselj0.(reshape(k, :, 1) .* reshape(radii, 1, :))
-    RT = promote_type(eltype(k), typeof(float(real(zero(eltype(C))))))
-    out = zeros(RT, length(k))
-    for I in eachindex(C, ids)
-        id = ids[I]
-        c = real(C[I])
-        @inbounds for i in eachindex(k)
-            out[i] += weights[i, id] * c
-        end
-    end
-    @. out *= k * dx * dy / 2 / pi
-    return out
+    return RadialReductionCache{
+        2,
+        typeof(k),
+        typeof(ids),
+        typeof(radii),
+        typeof(weights),
+        typeof((dx, dy)),
+    }(
+        k,
+        ids,
+        radii,
+        weights,
+        (dx, dy),
+    )
 end
 
-function _cached_sinc_reduce(k, x, y, z, C)
+function radial_reduction_cache(k, x, y, z)
     cache = _cached_radial_ids_3d(x, y, z)
     isnothing(cache) && return nothing
     ids, radii, dx, dy, dz = cache
     weights = _sinc_times_pi.(reshape(k, :, 1) .* reshape(radii, 1, :))
-    RT = promote_type(eltype(k), typeof(float(real(zero(eltype(C))))))
-    out = zeros(RT, length(k))
-    for I in eachindex(C, ids)
-        id = ids[I]
-        c = real(C[I])
-        @inbounds for i in eachindex(k)
-            out[i] += weights[i, id] * c
+    return RadialReductionCache{
+        3,
+        typeof(k),
+        typeof(ids),
+        typeof(radii),
+        typeof(weights),
+        typeof((dx, dy, dz)),
+    }(
+        k,
+        ids,
+        radii,
+        weights,
+        (dx, dy, dz),
+    )
+end
+
+radial_reduction_cache(k, X::Tuple{<:AbstractVector,<:AbstractVector}) =
+    radial_reduction_cache(k, X...)
+
+radial_reduction_cache(k, X::Tuple{<:AbstractVector,<:AbstractVector,<:AbstractVector}) =
+    radial_reduction_cache(k, X...)
+
+function _radial_reduce_partial!(partial, C, ids, weights, range)
+    fill!(partial, zero(eltype(partial)))
+    @inbounds for lin in range
+        id = ids[lin]
+        c = real(C[lin])
+        for i in eachindex(partial)
+            partial[i] += weights[i, id] * c
         end
     end
+    return partial
+end
+
+function _threaded_radial_weight_reduce(
+    k,
+    C,
+    ids,
+    weights,
+    ::Type{RT};
+    ntasks = Threads.nthreads(),
+) where {RT}
+    out = zeros(RT, length(k))
+    nlinear = length(C)
+    nlinear == 0 && return out
+
+    ntasks = min(ntasks, nlinear)
+    if ntasks == 1
+        return _radial_reduce_partial!(out, C, ids, weights, eachindex(C))
+    end
+
+    chunksize = cld(nlinear, ntasks)
+    tasks = map(1:ntasks) do task
+        first = (task - 1) * chunksize + 1
+        last = min(task * chunksize, nlinear)
+        Threads.@spawn _radial_reduce_partial!(
+            zeros(RT, length(k)),
+            C,
+            ids,
+            weights,
+            first:last,
+        )
+    end
+    for task in tasks
+        out .+= fetch(task)
+    end
+    return out
+end
+
+function radial_reduce(cache::RadialReductionCache{2}, C)
+    (; k, ids, weights, spacing) = cache
+    dx, dy = spacing
+    RT = promote_type(eltype(k), typeof(float(real(zero(eltype(C))))))
+    out = _threaded_radial_weight_reduce(k, C, ids, weights, RT)
+    @. out *= k * dx * dy / 2 / pi
+    return out
+end
+
+bessel_reduce(cache::RadialReductionCache{2}, C) = radial_reduce(cache, C)
+
+function radial_reduce(cache::RadialReductionCache{3}, C)
+    (; k, ids, weights, spacing) = cache
+    dx, dy, dz = spacing
+    RT = promote_type(eltype(k), typeof(float(real(zero(eltype(C))))))
+    out = _threaded_radial_weight_reduce(k, C, ids, weights, RT)
     @. out *= k^2 * dx * dy * dz / 2 / pi^2
     return out
+end
+
+function _cached_bessel_reduce(k, x, y, C)
+    cache = radial_reduction_cache(k, x, y)
+    isnothing(cache) && return nothing
+    return radial_reduce(cache, C)
+end
+
+function _cached_sinc_reduce(k, x, y, z, C)
+    cache = radial_reduction_cache(k, x, y, z)
+    isnothing(cache) && return nothing
+    return radial_reduce(cache, C)
 end
 
 function sinc_reduce(k, x, y, z, C)
@@ -488,6 +590,26 @@ function sinc_reduce(k, x, y, z, C)
     @. E *= k^2 * dx * dy * dz / 2 / pi^2
     return E
 end
+
+sinc_reduce(cache::RadialReductionCache{3}, C) = radial_reduce(cache, C)
+
+_radial_reduce(k, X::Tuple{<:AbstractVector,<:AbstractVector}, C) =
+    bessel_reduce(k, X..., C)
+
+_radial_reduce(k, X::Tuple{<:AbstractVector,<:AbstractVector,<:AbstractVector}, C) =
+    sinc_reduce(k, X..., C)
+
+_radial_reduce(
+    cache::RadialReductionCache{2},
+    X::Tuple{<:AbstractVector,<:AbstractVector},
+    C,
+) = radial_reduce(cache, C)
+
+_radial_reduce(
+    cache::RadialReductionCache{3},
+    X::Tuple{<:AbstractVector,<:AbstractVector,<:AbstractVector},
+    C,
+) = radial_reduce(cache, C)
 
 function _integrated_sinc_reduce(k, x, y, z, C)
     dx, dy, dz = x[2] - x[1], y[2] - y[1], z[2] - z[1]
@@ -522,7 +644,7 @@ function kinetic_density(k, psi::Psi{2})
     cx = auto_correlate(ψx, X, K)
     cy = auto_correlate(ψy, X, K)
     C = @. 0.5(cx + cy)
-    return bessel_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function kinetic_density(k, psi::Psi{3})
@@ -532,7 +654,7 @@ function kinetic_density(k, psi::Psi{3})
     cy = auto_correlate(ψy, X, K)
     cz = auto_correlate(ψz, X, K)
     C = @. 0.5(cx + cy + cz)
-    return sinc_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 """
@@ -544,13 +666,13 @@ points `k`, with the usual radial weight in `k` space ensuring normalization und
 function knumber_density(k, psi::Psi{2})
     @unpack ψ, X, K = psi
     C = auto_correlate(ψ, X, K)
-    return bessel_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function knumber_density(k, psi::Psi{3})
     @unpack ψ, X, K = psi
     C = auto_correlate(ψ, X, K)
-    return sinc_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 """
@@ -559,8 +681,10 @@ end
 Calculates the angle integrated wave-action spectrum ``|\\phi(\\mathbf{k})|^2``, at the
 points `k`, without the radial weight in `k` space ensuring normalization under ∫dk. Units will be population per wavenumber cubed. Isotropy is not assumed. Arrays `X`, `K` should be computed using `xk_arrays`.
 """
-wave_action(k, psi::Psi{2}) = _safe_radial_divide(knumber_density(k, psi::Psi{2}), k, 1)
-wave_action(k, psi::Psi{3}) = _safe_radial_divide(knumber_density(k, psi::Psi{3}), k, 2)
+wave_action(k, psi::Psi{2}) =
+    _safe_radial_divide(knumber_density(k, psi::Psi{2}), radial_k(k), 1)
+wave_action(k, psi::Psi{3}) =
+    _safe_radial_divide(knumber_density(k, psi::Psi{3}), radial_k(k), 2)
 
 """
 	incompressible_spectrum(k,ψ)
@@ -580,7 +704,7 @@ function incompressible_spectrum(k, psi::Psi{2}, Ω = 0.0)
     cx = auto_correlate(wx, X, K)
     cy = auto_correlate(wy, X, K)
     C = @. 0.5 * (cx + cy)
-    return bessel_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function incompressible_spectrum(k, psi::Psi{3})
@@ -597,7 +721,7 @@ function incompressible_spectrum(k, psi::Psi{3})
     cy = auto_correlate(wy, X, K)
     cz = auto_correlate(wz, X, K)
     C = @. 0.5 * (cx + cy + cz)
-    return sinc_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 """
@@ -618,7 +742,7 @@ function compressible_spectrum(k, psi::Psi{2})
     cx = auto_correlate(wx, X, K)
     cy = auto_correlate(wy, X, K)
     C = @. 0.5 * (cx + cy)
-    return bessel_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function compressible_spectrum(k, psi::Psi{3})
@@ -635,7 +759,7 @@ function compressible_spectrum(k, psi::Psi{3})
     cy = auto_correlate(wy, X, K)
     cz = auto_correlate(wz, X, K)
     C = @. 0.5 * (cx + cy + cz)
-    return sinc_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 """
@@ -652,7 +776,7 @@ function qpressure_spectrum(k, psi::Psi{2})
     cx = auto_correlate(wx, X, K)
     cy = auto_correlate(wy, X, K)
     C = @. 0.5 * (cx + cy)
-    return bessel_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function qpressure_spectrum(k, psi::Psi{3})
@@ -664,7 +788,7 @@ function qpressure_spectrum(k, psi::Psi{3})
     cy = auto_correlate(wy, X, K)
     cz = auto_correlate(wz, X, K)
     C = @. 0.5 * (cx + cy + cz)
-    return sinc_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 """
@@ -688,7 +812,7 @@ function incompressible_density(k, psi::Psi{2})
     cx = auto_correlate(wix, X, K)
     cy = auto_correlate(wiy, X, K)
     C = @. 0.5 * (cx + cy)
-    return bessel_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function incompressible_density(k, psi::Psi{3})
@@ -709,7 +833,7 @@ function incompressible_density(k, psi::Psi{3})
     cy = auto_correlate(wiy, X, K)
     cz = auto_correlate(wiz, X, K)
     C = @. 0.5 * (cx + cy + cz)
-    return sinc_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 """
@@ -733,7 +857,7 @@ function compressible_density(k, psi::Psi{2})
     cx = auto_correlate(wcx, X, K)
     cy = auto_correlate(wcy, X, K)
     C = @. 0.5 * (cx + cy)
-    return bessel_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function compressible_density(k, psi::Psi{3})
@@ -754,7 +878,7 @@ function compressible_density(k, psi::Psi{3})
     cy = auto_correlate(wcy, X, K)
     cz = auto_correlate(wcz, X, K)
     C = @. 0.5 * (cx + cy + cz)
-    return sinc_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 """
@@ -774,7 +898,7 @@ function qpressure_density(k, psi::Psi{2})
     cx = auto_correlate(rnx, X, K)
     cy = auto_correlate(rny, X, K)
     C = @. 0.5 * (cx + cy)
-    return bessel_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function qpressure_density(k, psi::Psi{3})
@@ -790,7 +914,7 @@ function qpressure_density(k, psi::Psi{3})
     cy = auto_correlate(rny, X, K)
     cz = auto_correlate(rnz, X, K)
     C = @. 0.5 * (cx + cy + cz)
-    return sinc_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 ## coupling terms
@@ -821,7 +945,7 @@ function ic_density(k, psi::Psi{2})
     cicy = convolve(wiy, wcy, X, K)
     cciy = convolve(wcy, wiy, X, K)
     C = @. 0.5 * (cicx + ccix + cicy + cciy)
-    return bessel_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function ic_density(k, psi::Psi{3})
@@ -849,7 +973,7 @@ function ic_density(k, psi::Psi{3})
     cicz = convolve(wiz, wcz, X, K)
     cciz = convolve(wcz, wiz, X, K)
     C = @. 0.5 * (cicx + ccix + cicy + cciy + cicz + cciz)
-    return sinc_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 """
@@ -881,7 +1005,7 @@ function iq_density(k, psi::Psi{2})
     ciqy = convolve(wiy, wqy, X, K)
     cqiy = convolve(wqy, wiy, X, K)
     C = @. 0.5 * (ciqx + cqix + ciqy + cqiy)
-    return bessel_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function iq_density(k, psi::Psi{3})
@@ -912,7 +1036,7 @@ function iq_density(k, psi::Psi{3})
     ciqz = convolve(wiz, wqz, X, K)
     cqiz = convolve(wqz, wiz, X, K)
     C = @. 0.5 * (ciqx + cqix + ciqy + cqiy + ciqz + cqiz)
-    return sinc_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 
@@ -945,7 +1069,7 @@ function cq_density(k, psi::Psi{2})
     ccqy = convolve(wcy, wqy, X, K)
     cqcy = convolve(wqy, wcy, X, K)
     C = @. 0.5 * (ccqx + cqcx + ccqy + cqcy)
-    return bessel_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function cq_density(k, psi::Psi{3})
@@ -976,7 +1100,7 @@ function cq_density(k, psi::Psi{3})
     ccqz = convolve(wcz, wqz, X, K)
     cqcz = convolve(wqz, wcz, X, K)
     C = @. 0.5 * (ccqx + cqcx + ccqy + cqcy + ccqz + cqcz)
-    return sinc_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 """
@@ -1013,7 +1137,7 @@ function trap_spectrum(k, V, psi::Psi{2})
     f = @. abs(ψ) * sqrt(V(x, y', 0.0))
     C = auto_correlate(f, X, K)
 
-    return bessel_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function trap_spectrum(k, V, psi::Psi{3})
@@ -1023,7 +1147,7 @@ function trap_spectrum(k, V, psi::Psi{3})
     f = @. abs(ψ) * sqrt(V(x, y', zr, 0.0))
     C = auto_correlate(f, X, K)
 
-    return sinc_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function density_spectrum(k, psi::Psi{2})
@@ -1031,7 +1155,7 @@ function density_spectrum(k, psi::Psi{2})
     n = abs2.(ψ)
     C = auto_correlate(n, X, K)
 
-    return bessel_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function density_spectrum(k, psi::Psi{3})
@@ -1039,7 +1163,7 @@ function density_spectrum(k, psi::Psi{3})
     n = abs2.(ψ)
     C = auto_correlate(n, X, K)
 
-    return sinc_reduce(k, X..., C)
+    return _radial_reduce(k, X, C)
 end
 
 function _k2_grid(K::NTuple{2})
@@ -1102,9 +1226,9 @@ end
 
 function _gpe_reduce(k, X, C)
     if length(X) == 2
-        return bessel_reduce(k, X..., C)
+        return _radial_reduce(k, X, C)
     else
-        return sinc_reduce(k, X..., C)
+        return _radial_reduce(k, X, C)
     end
 end
 
